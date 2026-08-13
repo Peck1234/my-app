@@ -1,0 +1,22 @@
+export const th = {
+  nurseLogin: {
+    eyebrow: 'Nurse Login',
+    title: 'ล็อกอินพยาบาล',
+    subtitle: 'กรอกรหัสผ่านพยาบาลเพื่อเข้าสู่ระบบ',
+    permissionMessage: 'แอปนี้ต้องใช้กล้องเพื่อสแกน QR Code',
+    permissionButton: 'อนุญาตให้ใช้กล้อง',
+    passwordLabel: 'รหัสผ่าน',
+    passwordPlaceholder: 'กรอกรหัสผ่านพยาบาล',
+    showPassword: 'แสดง',
+    hidePassword: 'ซ่อน',
+    loginButton: 'เข้าสู่ระบบ',
+    loginLoading: 'กำลังเข้าสู่ระบบ',
+    successTitle: 'ล็อกอินสำเร็จ',
+    successMessage: 'ยืนยันตัวตนพยาบาลเรียบร้อยแล้ว',
+    authMethodLabel: 'วิธีเข้าสู่ระบบ',
+    authMethodPassword: 'รหัสผ่าน',
+    loginTimeLabel: 'เวลาเข้าสู่ระบบ',
+    loginAgain: 'ออกจากระบบ',
+    instruction: 'วางกล้องให้เห็น QR Code ของตลับยาให้ชัดเจน',
+  },
+}
