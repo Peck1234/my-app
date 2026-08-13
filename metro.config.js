@@ -1,12 +1,31 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config')
 const http = require('http')
+const os = require('os')
 
 const config = getDefaultConfig(__dirname)
 
-// พร็อกซี่ /api/* ไปที่ backend Laravel (127.0.0.1:8000) ผ่าน dev server ตัวเดียวกัน
-// ทำให้ frontend เรียก API แบบ path สัมพัทธ์ได้เสมอ ไม่ว่าจะเปิดผ่าน localhost, LAN IP, หรือ tunnel URL
-const BACKEND_HOST = '127.0.0.1'
+// พร็อกซี่ /api/* ไปที่ backend Laravel ผ่าน dev server ตัวเดียวกัน ทำให้ frontend
+// เรียก API แบบ path สัมพัทธ์ได้เสมอ ไม่ว่าจะเปิดผ่าน localhost, LAN IP, หรือ tunnel URL
+//
+// ทำไมไม่ใช้ 127.0.0.1 ตรงๆ: start-backend.ps1 bind PHP เข้ากับ IP วง LAN ของ
+// เครื่องนี้โดยตรง (ไม่ใช่ 0.0.0.0) เพื่อแก้ปัญหามือถือต่อจากภายนอกไม่ได้ - ผลคือ
+// backend ไม่ listen ที่ loopback อีกต่อไป ถ้า hardcode 127.0.0.1 ไว้ที่นี่ พอ IP
+// เครื่องเปลี่ยน (เช่น DHCP เปลี่ยนให้ หรือย้าย WiFi) proxy ตัวนี้จะยิงไม่ถึงเลย
+// (เจอเป็น ECONNREFUSED 127.0.0.1:8000 ตอนใช้ npm run web) เลยตรวจจับ IP สดใหม่
+// ทุกครั้งที่ Metro start แทน เหมือนที่ start-backend.ps1 ทำฝั่ง backend
+function detectLanIp() {
+  const interfaces = os.networkInterfaces()
+  for (const name of Object.keys(interfaces)) {
+    if (/loopback|vethernet|wsl|vpn|virtualbox|vmware/i.test(name)) continue
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) return iface.address
+    }
+  }
+  return '127.0.0.1'
+}
+
+const BACKEND_HOST = detectLanIp()
 const BACKEND_PORT = 8000
 
 config.server = {
