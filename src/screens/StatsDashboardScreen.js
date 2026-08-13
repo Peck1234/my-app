@@ -7,7 +7,10 @@ import LinkButton from '../components/LinkButton'
 import { exportStatsPdf } from '../utils/exportStatsPdf'
 import { colors, radius } from '../constants/theme'
 
-const NAVY = '#12182A'
+// Was a generic navy (#12182A) unrelated to either theme this app has had -
+// now the palette's own ink color, so this header block reads as part of the
+// same indigo/violet family instead of a leftover neutral-dark block.
+const NAVY = colors.ink
 const NAVY_SOFT = 'rgba(255,255,255,0.65)'
 
 function CardTitle({ icon, children }) {

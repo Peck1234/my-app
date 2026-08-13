@@ -607,7 +607,10 @@ const styles = StyleSheet.create({
     top: 24,
     alignSelf: 'center',
     zIndex: 10,
-    backgroundColor: 'rgba(29,127,224,0.9)',
+    // Was a hardcoded leftover from the very first theme (#1D7FE0) that never
+    // got updated across two theme passes since - rgba() can't reference a
+    // token directly, so this is the new accent's own RGB spelled out.
+    backgroundColor: 'rgba(67,56,202,0.9)',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
@@ -850,14 +853,14 @@ const styles = StyleSheet.create({
     lineHeight: 70,
   },
   modalPatientName: {
-    color: '#14181F',
+    color: colors.ink,
     fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
     marginTop: 2,
   },
   modalSub: {
-    color: '#667085',
+    color: colors.muted,
     fontSize: 13,
     marginTop: 2,
   },

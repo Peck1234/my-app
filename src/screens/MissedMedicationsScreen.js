@@ -187,6 +187,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  // Filled chip (accentSoft), not outline - matches the ward pill on
+  // PatientListScreen's cards so the same concept looks the same in both
+  // places instead of two different treatments for one badge type.
   wardPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,9 +197,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm + 1,
     paddingVertical: 3,
     borderRadius: radius.pill,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
   wardPillText: {
     color: colors.accent,

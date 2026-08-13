@@ -105,11 +105,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadow.raised,
   },
-  // Secondary teal instead of accent blue — a deliberate, single point of
+  // Secondary violet instead of accent indigo — a deliberate, single point of
   // color hierarchy: the badge is identity/branding, the button below is the
   // action. Using two different accent hues for those two different jobs
-  // makes "this is clickable" (blue) read distinctly from "this is a label"
-  // (teal) at a glance, instead of one blue doing every job on the screen.
+  // makes "this is clickable" (indigo) read distinctly from "this is a label"
+  // (violet) at a glance, instead of one color doing every job on the screen.
   badge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,

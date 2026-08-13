@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
   },
   // Elevation-not-border, same pattern as the medication list card — this
   // screen is the very last thing a nurse sees after every dispense round,
-  // so it should read as part of the same "Warm Trust" surface language as
-  // everything before it, not a leftover flat-bordered card.
+  // so it should read as part of the same surface language as everything
+  // before it, not a leftover flat-bordered card.
   statCard: {
     flex: 1,
     alignItems: 'center',

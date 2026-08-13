@@ -1,10 +1,11 @@
 import { useRef } from 'react'
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import QRCode from 'react-native-qrcode-svg'
 import { Ionicons } from '@expo/vector-icons'
 import Button from '../components/Button'
 import { downloadQrCode } from '../utils/downloadQrCode'
-import { colors, radius } from '../constants/theme'
+import { colors, gradients, radius } from '../constants/theme'
 
 export default function PatientQrCodesScreen({ patient, medications, onDone, onAssignToSlot }) {
   const patientQrRef = useRef(null)
@@ -13,9 +14,12 @@ export default function PatientQrCodesScreen({ patient, medications, onDone, onA
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View style={styles.iconMark}>
+        {/* Gradient promoted from flat accent - this is the page's one hero
+            identity mark (same role as the login icon / dashboard avatar),
+            so it gets the same brand treatment for consistency. */}
+        <LinearGradient colors={gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconMark}>
           <Ionicons name="qr-code" size={22} color="#FFFFFF" />
-        </View>
+        </LinearGradient>
         <Text style={styles.title}>รหัส QR สำหรับ {patient.full_name}</Text>
         <Text style={styles.subtitle}>
           ถ่ายภาพหน้าจอนี้หรือพิมพ์ออกไปติดที่ป้ายข้อมือผู้ป่วยและตลับยาแต่ละรายการ
@@ -112,7 +116,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.accent,
     marginBottom: 6,
   },
   title: {

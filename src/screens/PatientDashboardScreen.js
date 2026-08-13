@@ -95,14 +95,11 @@ export default function PatientDashboardScreen({ nurse, onLogout }) {
                   onPress={() => setActiveTab(tab.key)}
                   activeOpacity={0.7}
                 >
-                  {isActive && (
-                    <LinearGradient
-                      colors={gradients.primary}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                  )}
+                  {/* Flat indigo fill instead of a gradient wash - this is a
+                      state indicator someone scans across three tabs quickly,
+                      not a brand moment, so instant recognizability beats a
+                      decorative gradient here. */}
+                  {isActive && <View style={[StyleSheet.absoluteFillObject, styles.tabActiveFill]} />}
                   <View style={styles.tabContent}>
                     <Ionicons
                       name={TAB_ICONS[tab.key]}
@@ -182,10 +179,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Dropped the hard bottom border that used to be the only thing separating
-  // header from content — on the old flat-white background a divider line
-  // was doing all the work; on the warm canvas, the tab bar below is now a
-  // white floating card in its own right (see `tabRow`), which already reads
-  // as a distinct region without needing a ruled line under it too.
+  // header from content — the tab bar below is its own floating white card
+  // (see `tabRow`), which already reads as a distinct region without needing
+  // a ruled line under it too.
   header: {
     marginBottom: spacing.xl,
   },
@@ -212,8 +208,8 @@ const styles = StyleSheet.create({
   },
   // Was a bare outlined track (bg == page bg) with the active tab as the only
   // thing carrying any weight. Now the whole track is its own elevated white
-  // card sitting on the warm page — the segmented control reads as one
-  // physical object you're pressing on, not text floating over a hairline box.
+  // card — the segmented control reads as one physical object you're
+  // pressing on, not text floating over a hairline box.
   tabRow: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -222,6 +218,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
     ...shadow.card,
+  },
+  tabActiveFill: {
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
   },
   tabContent: {
     flexDirection: 'row',
