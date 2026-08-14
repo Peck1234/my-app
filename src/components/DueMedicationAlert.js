@@ -56,11 +56,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    // Warm near-black backdrop (same family as shadow.card.shadowColor)
-    // instead of a neutral black/gray scrim, so the dimmed layer behind the
-    // modal still reads as part of the warm palette rather than a leftover
-    // cool-toned overlay dropped on top of it.
-    backgroundColor: 'rgba(58,46,31,0.55)',
+    // Indigo-black backdrop (same family as shadow.card.shadowColor) instead
+    // of a neutral black/gray scrim, so the dimmed layer behind the modal
+    // still reads as part of the Clarity palette. Was a leftover warm-brown
+    // value from the theme before Aurora - this component isn't one of the
+    // 17 screens, so it never got touched in the Aurora or Clarity passes.
+    backgroundColor: 'rgba(23,19,37,0.55)',
     padding: spacing.xl,
   },
   card: {

@@ -7,6 +7,7 @@ import CameraPermissionGate from '../components/CameraPermissionGate'
 import Button from '../components/Button'
 import { verifyDispense } from '../api'
 import { normalizeQrValue } from '../utils/qr'
+import { getBoxRect, matchesSlot, matchesCassette, isTargetMedication } from '../utils/medicationLocatorLogic'
 import { CAMERA_FACING, QR_BARCODE_TYPES } from '../constants/camera'
 import { colors, radius } from '../constants/theme'
 
@@ -40,28 +41,6 @@ const BOX_LOST_TIMEOUT_MS = 500
 const PRUNE_INTERVAL_MS = 150
 
 const TARGET_COLOR = '#22c55e'
-
-function getBoxRect(result, screenWidth, screenHeight) {
-  const { cornerPoints, bounds } = result
-  if (Array.isArray(cornerPoints) && cornerPoints.length >= 3) {
-    const xs = cornerPoints.map((p) => p.x)
-    const ys = cornerPoints.map((p) => p.y)
-    const x = Math.min(...xs)
-    const y = Math.min(...ys)
-    const width = Math.max(...xs) - x
-    const height = Math.max(...ys) - y
-    if (width > 0 && height > 0) return { x, y, width, height }
-  }
-  if (bounds?.size?.width > 0 && bounds?.size?.height > 0) {
-    return {
-      x: bounds.origin.x,
-      y: bounds.origin.y,
-      width: bounds.size.width,
-      height: bounds.size.height,
-    }
-  }
-  return { x: screenWidth / 2 - 60, y: screenHeight / 2 - 60, width: 120, height: 120 }
-}
 
 // What a given QR value means right now, for whichever stage is active — used
 // to label/color each box when several codes are visible at once. Purely
@@ -399,7 +378,7 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
   }
 
   const handleSlotScan = (data) => {
-    if (data === patient.qr_code_slot) {
+    if (matchesSlot(data, patient.qr_code_slot)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       busyRef.current = true
       setSlotConfirmed(true)
@@ -424,7 +403,7 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
   }
 
   const handleCassetteScan = (data) => {
-    const medication = medicationByQr[data]
+    const medication = matchesCassette(data, medicationByQr)
 
     if (!medication) {
       setFeedback({ status: 'unknown', title: 'ไม่รู้จัก QR นี้' })
@@ -432,7 +411,7 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
       return
     }
 
-    if (targetMedication && medication.order_id === targetMedication.order_id) {
+    if (isTargetMedication(medication, targetMedication)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       setFeedback({ status: 'target', title: 'ใช่ตัวนี้! กำลังบันทึกจ่ายยา...', sub: medication.drug_name })
       busyRef.current = true
