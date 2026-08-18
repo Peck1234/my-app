@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Keyboard, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,16 +8,20 @@ import RegisterForm from '../components/RegisterForm'
 import FadeInView from '../components/FadeInView'
 import ResponsiveContainer from '../components/ResponsiveContainer'
 import PatientDashboardScreen from './PatientDashboardScreen'
+import ForgotPasswordScreen from './ForgotPasswordScreen'
+import ResetPasswordScreen from './ResetPasswordScreen'
 import { appConfig } from '../config/appConfig'
 import { useNurseLogin } from '../hook/useNurseLogin'
 import { th } from '../i18n/th'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
 export default function NurseLoginScreen() {
-  const { error, handlePasswordLogin, handleRegister, loading, resetLogin, session } =
+  const { error, handlePasswordLogin, handleRegister, loading, resetLogin, session, updateSession } =
     useNurseLogin()
   const copy = th.nurseLogin
   const [mode, setMode] = useState('login')
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetNotice, setResetNotice] = useState(null)
 
   if (session) {
     return (
@@ -25,7 +29,46 @@ export default function NurseLoginScreen() {
         <StatusBar style="dark" />
         <ResponsiveContainer>
           <FadeInView key="dashboard">
-            <PatientDashboardScreen nurse={session} onLogout={resetLogin} />
+            <PatientDashboardScreen nurse={session} onLogout={resetLogin} onProfileUpdated={updateSession} />
+          </FadeInView>
+        </ResponsiveContainer>
+      </SafeAreaView>
+    )
+  }
+
+  if (mode === 'forgot') {
+    return (
+      <SafeAreaView style={styles.shell}>
+        <StatusBar style="dark" />
+        <ResponsiveContainer style={styles.content}>
+          <FadeInView key="forgot">
+            <ForgotPasswordScreen
+              onBack={() => setMode('login')}
+              onCodeSent={(email) => {
+                setResetEmail(email)
+                setMode('reset')
+              }}
+            />
+          </FadeInView>
+        </ResponsiveContainer>
+      </SafeAreaView>
+    )
+  }
+
+  if (mode === 'reset') {
+    return (
+      <SafeAreaView style={styles.shell}>
+        <StatusBar style="dark" />
+        <ResponsiveContainer style={styles.content}>
+          <FadeInView key="reset">
+            <ResetPasswordScreen
+              email={resetEmail}
+              onBack={() => setMode('login')}
+              onSuccess={(message) => {
+                setResetNotice(message)
+                setMode('login')
+              }}
+            />
           </FadeInView>
         </ResponsiveContainer>
       </SafeAreaView>
@@ -36,49 +79,77 @@ export default function NurseLoginScreen() {
     <SafeAreaView style={styles.shell}>
       <StatusBar style="dark" />
 
-      <ResponsiveContainer style={styles.content}>
-        <FadeInView key={mode}>
-          <View style={styles.header}>
-            <LinearGradient
-              colors={gradients.primary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconMark}
-            >
-              <Ionicons name="medkit" size={30} color="#FFFFFF" />
-            </LinearGradient>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{appConfig.appName}</Text>
+      {/* Tapping anywhere outside a text input (but not on the inputs/buttons
+          themselves, which handle their own touches first) dismisses the
+          keyboard - standard "tap outside to close keyboard" behavior.
+          Pressable (not TouchableWithoutFeedback) on purpose: TWF injects its
+          responder handlers into its direct child via cloneElement, but
+          ResponsiveContainer only reads `children`/`style` and drops any
+          other props, so those handlers never reached a real View and taps
+          silently did nothing. Pressable owns its own View instead, so this
+          works regardless of what's nested inside it. */}
+      <Pressable style={styles.pressableFill} onPress={Keyboard.dismiss}>
+        <ResponsiveContainer style={styles.content}>
+          <FadeInView key={mode}>
+            <View style={styles.header}>
+              <LinearGradient
+                colors={gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.iconMark}
+              >
+                <Ionicons name="medkit" size={30} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{appConfig.appName}</Text>
+              </View>
+              <Text style={styles.title}>
+                {mode === 'login' ? copy.title : 'สมัครสมาชิกพยาบาล'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {mode === 'login' ? copy.subtitle : 'สร้างบัญชีพยาบาลใหม่เพื่อเข้าใช้งานระบบ'}
+              </Text>
             </View>
-            <Text style={styles.title}>
-              {mode === 'login' ? copy.title : 'สมัครสมาชิกพยาบาล'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {mode === 'login' ? copy.subtitle : 'สร้างบัญชีพยาบาลใหม่เพื่อเข้าใช้งานระบบ'}
-            </Text>
-          </View>
 
-          {mode === 'login' ? (
-            <PasswordLoginForm error={error} loading={loading} onSubmit={handlePasswordLogin} />
-          ) : (
-            <RegisterForm error={error} loading={loading} onSubmit={handleRegister} />
-          )}
+            {!!resetNotice && mode === 'login' && (
+              <View style={styles.resetNoticeBox}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.resetNoticeText}>{resetNotice}</Text>
+              </View>
+            )}
 
-          <TouchableOpacity
-            style={styles.switchModeButton}
-            onPress={() => {
-              resetLogin()
-              setMode(mode === 'login' ? 'register' : 'login')
-            }}
-            disabled={loading}
-            activeOpacity={0.6}
-          >
-            <Text style={styles.switchModeText}>
-              {mode === 'login' ? 'ยังไม่มีบัญชี? สมัครสมาชิก' : 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ'}
-            </Text>
-          </TouchableOpacity>
-        </FadeInView>
-      </ResponsiveContainer>
+            {mode === 'login' ? (
+              <PasswordLoginForm
+                error={error}
+                loading={loading}
+                onSubmit={handlePasswordLogin}
+                onForgotPassword={() => {
+                  resetLogin()
+                  setResetNotice(null)
+                  setMode('forgot')
+                }}
+              />
+            ) : (
+              <RegisterForm error={error} loading={loading} onSubmit={handleRegister} />
+            )}
+
+            <TouchableOpacity
+              style={styles.switchModeButton}
+              onPress={() => {
+                resetLogin()
+                setResetNotice(null)
+                setMode(mode === 'login' ? 'register' : 'login')
+              }}
+              disabled={loading}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.switchModeText}>
+                {mode === 'login' ? 'ยังไม่มีบัญชี? สมัครสมาชิก' : 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ'}
+              </Text>
+            </TouchableOpacity>
+          </FadeInView>
+        </ResponsiveContainer>
+      </Pressable>
     </SafeAreaView>
   )
 }
@@ -87,6 +158,9 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  pressableFill: {
+    flex: 1,
   },
   content: {
     flex: 1,
@@ -143,6 +217,21 @@ const styles = StyleSheet.create({
   switchModeText: {
     color: colors.accent,
     fontSize: 13.5,
+    fontWeight: '700',
+  },
+  resetNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.successBg,
+    marginBottom: spacing.lg,
+  },
+  resetNoticeText: {
+    flex: 1,
+    color: colors.success,
+    fontSize: 13,
     fontWeight: '700',
   },
 })

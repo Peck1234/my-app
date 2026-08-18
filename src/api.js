@@ -123,13 +123,13 @@ export async function verifyDispense({ nurseQr, patientQr, cassetteQr }) {
   )
 }
 
-export async function registerNurse({ fullName, username, password }) {
+export async function registerNurse({ fullName, username, email, password }) {
   return apiFetchJson(
     '/register',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name: fullName, username, password }),
+      body: JSON.stringify({ full_name: fullName, username, email, password }),
     },
     { fallbackMessage: 'สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่' }
   )
@@ -144,6 +144,58 @@ export async function loginNurse({ username, password }) {
       body: JSON.stringify({ username, password }),
     },
     { fallbackMessage: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
+// Always resolves with the same generic { message } shape the backend
+// returns whether or not the email is actually registered - see
+// AUTH-API-SPEC.md. Callers should show that message as-is, never branch on
+// "was this email found" (the backend deliberately doesn't tell us).
+export async function requestPasswordReset({ email }) {
+  return apiFetchJson(
+    '/forgot-password',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    },
+    { fallbackMessage: 'ส่งคำขอไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
+export async function resetPassword({ email, code, newPassword }) {
+  return apiFetchJson(
+    '/reset-password',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, new_password: newPassword }),
+    },
+    { fallbackMessage: 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
+export async function updateNurseProfile({ token, fullName, username, email }) {
+  return apiFetchJson(
+    '/profile',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ full_name: fullName, username, email }),
+    },
+    { fallbackMessage: 'บันทึกข้อมูลบัญชีไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
+export async function changeNursePassword({ token, currentPassword, newPassword }) {
+  return apiFetchJson(
+    '/change-password',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    },
+    { fallbackMessage: 'เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่' }
   )
 }
 

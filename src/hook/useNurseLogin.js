@@ -50,6 +50,13 @@ export function useNurseLogin() {
     loginLockedRef.current = false
   }, [])
 
+  // Merges fields (e.g. full_name/username/email after an AccountSettingsScreen
+  // save) into the current session without touching auth state (token,
+  // loginAt, ...) - a no-op if called with no active session.
+  const updateSession = useCallback((patch) => {
+    setSession((prev) => (prev ? { ...prev, ...patch } : prev))
+  }, [])
+
   return {
     error,
     handlePasswordLogin,
@@ -57,5 +64,6 @@ export function useNurseLogin() {
     loading,
     resetLogin,
     session,
+    updateSession,
   }
 }

@@ -11,6 +11,7 @@ import MissedMedicationsScreen from './MissedMedicationsScreen'
 import StatsDashboardScreen from './StatsDashboardScreen'
 import DispenseLogScreen from './DispenseLogScreen'
 import SlotManagementScreen from './SlotManagementScreen'
+import AccountSettingsScreen from './AccountSettingsScreen'
 import { useMedicationReminders } from '../hook/useMedicationReminders'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
@@ -29,7 +30,7 @@ const TAB_ICONS = {
   stats: 'bar-chart',
 }
 
-export default function PatientDashboardScreen({ nurse, onLogout }) {
+export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdated }) {
   const { dueCount, alertItems, dismissAlert } = useMedicationReminders()
 
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -37,12 +38,25 @@ export default function PatientDashboardScreen({ nurse, onLogout }) {
   const [patientSubScreenActive, setPatientSubScreenActive] = useState(false)
   const [slotSubScreenActive, setSlotSubScreenActive] = useState(false)
   const [pendingAssignPatient, setPendingAssignPatient] = useState(null)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
   const initial = nurse.full_name?.trim()?.charAt(0) || 'N'
 
   const goAssignNewPatientToSlot = (patient) => {
     setPendingAssignPatient(patient)
     setSelectedPatient(null)
     setActiveTab('slots')
+  }
+
+  if (showAccountSettings) {
+    return (
+      <View style={styles.shell}>
+        <AccountSettingsScreen
+          nurse={nurse}
+          onBack={() => setShowAccountSettings(false)}
+          onProfileUpdated={onProfileUpdated}
+        />
+      </View>
+    )
   }
 
   const showHeader =
@@ -71,14 +85,24 @@ export default function PatientDashboardScreen({ nurse, onLogout }) {
                 <Text style={styles.nurseName}>พยาบาล {nurse.full_name}</Text>
               </View>
             </View>
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={onLogout}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="log-out-outline" size={14} color={colors.danger} />
-              <Text style={styles.logoutButtonText}>ออกจากระบบ</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.accountButton}
+                onPress={() => setShowAccountSettings(true)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              >
+                <Ionicons name="settings-outline" size={16} color={colors.muted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={onLogout}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="log-out-outline" size={14} color={colors.danger} />
+                <Text style={styles.logoutButtonText}>ออกจากระบบ</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.tabRow}>
@@ -189,6 +213,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  accountButton: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   logoutButton: {
     flexDirection: 'row',
