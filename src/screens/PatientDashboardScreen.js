@@ -133,7 +133,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
                   <View style={styles.tabContent}>
                     <Ionicons
                       name={TAB_ICONS[tab.key]}
-                      size={14}
+                      size={17}
                       color={isActive ? '#FFFFFF' : colors.muted}
                     />
                     <Text
@@ -257,29 +257,39 @@ const styles = StyleSheet.create({
   // thing carrying any weight. Now the whole track is its own elevated white
   // card — the segmented control reads as one physical object you're
   // pressing on, not text floating over a hairline box.
+  //
+  // 2x2 grid instead of one cramped row of 4: `flexWrap: 'wrap'` + each tab
+  // pinned to ~48% width forces exactly two per row regardless of container
+  // width, so "รายชื่อผู้ป่วย" (the longest label) finally gets room to
+  // breathe on both mobile and the wider web layout (ResponsiveContainer
+  // caps width but doesn't change the column count here - 2x2 stays 2x2).
+  // Swapped the outer card and each cell from a full pill (radius.pill) to
+  // radius.lg - a stadium shape reads right for a single-row segmented
+  // control, but looks stretched/odd once the block is two rows tall.
   tabRow: {
     flexDirection: 'row',
-    gap: spacing.xs,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     marginTop: spacing.lg,
-    padding: spacing.xs,
-    borderRadius: radius.pill,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     ...shadow.card,
   },
   tabActiveFill: {
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     backgroundColor: colors.accent,
   },
   tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs + 2,
+    gap: spacing.sm,
   },
   tabBadge: {
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
     borderRadius: radius.pill,
     backgroundColor: colors.highlight,
     alignItems: 'center',
@@ -287,19 +297,22 @@ const styles = StyleSheet.create({
   },
   tabBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
   },
+  // width: '48%' (not flex: 1) is what actually produces 2-per-row once the
+  // container wraps - flex:1 would just stretch each item to fill whatever
+  // room is left on its own row instead of matching its sibling above/below it.
   tab: {
-    flex: 1,
-    paddingVertical: spacing.sm + 1,
-    borderRadius: radius.pill,
+    width: '48%',
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
     backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   tabText: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: '700',
   },
   tabTextActive: {
