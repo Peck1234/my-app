@@ -24,7 +24,13 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-document-picker"
+      "expo-document-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "แอปนี้ต้องการเข้าถึงรูปภาพเพื่อให้คุณเลือกรูปโปรไฟล์"
+        }
+      ]
     ]
   }
 }

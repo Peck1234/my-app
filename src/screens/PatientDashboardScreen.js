@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import FadeInView from '../components/FadeInView'
@@ -77,14 +77,18 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <View style={styles.identity}>
-              <LinearGradient
-                colors={gradients.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatar}
-              >
-                <Text style={styles.avatarText}>{initial}</Text>
-              </LinearGradient>
+              {nurse.profile_photo_url ? (
+                <Image source={{ uri: nurse.profile_photo_url }} style={styles.avatar} />
+              ) : (
+                <LinearGradient
+                  colors={gradients.primary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatar}
+                >
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </LinearGradient>
+              )}
               <View>
                 <Text style={styles.eyebrow}>{TAB_EYEBROWS[activeTab]}</Text>
                 <Text style={styles.nurseName}>พยาบาล {nurse.full_name}</Text>

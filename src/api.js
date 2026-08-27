@@ -195,6 +195,29 @@ export async function updateNurseProfile({ token, fullName, username, email }) {
   )
 }
 
+// `imageUri` is an expo-image-picker asset's `.uri` - on native that's a
+// file:// path RN's fetch/FormData accepts directly as { uri, name, type };
+// on web it's a blob: object URL (matching expo-document-picker's own web
+// pattern) which has to be re-fetched into a real Blob first since FormData
+// can't attach a bare URL string as file content.
+export async function uploadNurseProfilePhoto({ token, imageUri }) {
+  const form = new FormData()
+  if (Platform.OS === 'web') {
+    const blob = await fetch(imageUri).then((res) => res.blob())
+    form.append('photo', blob, 'profile-photo.jpg')
+  } else {
+    form.append('photo', { uri: imageUri, name: 'profile-photo.jpg', type: 'image/jpeg' })
+  }
+
+  // No Content-Type header here on purpose, same reason as bulkImportMedicines -
+  // fetch/RN sets the multipart boundary itself from the FormData body.
+  return apiFetchJson(
+    '/profile/photo',
+    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form },
+    { fallbackMessage: 'อัปโหลดรูปโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
 export async function changeNursePassword({ token, currentPassword, newPassword }) {
   return apiFetchJson(
     '/change-password',

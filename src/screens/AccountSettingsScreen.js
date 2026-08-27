@@ -1,10 +1,24 @@
 import { useState } from 'react'
-import { Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Image,
+  Keyboard,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
+import { uploadNurseProfilePhoto } from '../api'
 import { changeNurseOwnPassword, updateNurseProfileDetails } from '../services/nurseAuthService'
-import { colors, radius, shadow, spacing } from '../constants/theme'
+import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
 export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated }) {
   const [fullName, setFullName] = useState(nurse.full_name || '')
@@ -13,6 +27,43 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState(null)
   const [profileSaved, setProfileSaved] = useState(false)
+
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoError, setPhotoError] = useState(null)
+  const initial = nurse.full_name?.trim()?.charAt(0) || 'N'
+
+  const handlePickPhoto = async () => {
+    if (photoUploading) return
+    setPhotoError(null)
+
+    let result
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        // 0.7 (not the 1.0 default) - the picker's own compression is enough
+        // to keep uploads small without a separate resize step, matching the
+        // 5MB limit the backend enforces.
+        quality: 0.7,
+      })
+    } catch (err) {
+      setPhotoError('เปิดคลังภาพไม่สำเร็จ กรุณาลองใหม่')
+      return
+    }
+
+    if (result.canceled || !result.assets?.[0]) return
+
+    setPhotoUploading(true)
+    try {
+      const updated = await uploadNurseProfilePhoto({ token: nurse.token, imageUri: result.assets[0].uri })
+      onProfileUpdated({ profile_photo_url: updated.profile_photo_url })
+    } catch (err) {
+      setPhotoError(err.message)
+    } finally {
+      setPhotoUploading(false)
+    }
+  }
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -61,6 +112,33 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
 
       <Text style={styles.title}>บัญชีผู้ใช้</Text>
       <Text style={styles.subtitle}>แก้ไขข้อมูลบัญชีของคุณเอง — แก้ไขได้เฉพาะบัญชีนี้เท่านั้น</Text>
+
+      <View style={styles.photoSection}>
+        <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8} disabled={photoUploading}>
+          <View style={styles.photoWrap}>
+            {nurse.profile_photo_url ? (
+              <Image source={{ uri: nurse.profile_photo_url }} style={styles.photo} />
+            ) : (
+              <LinearGradient
+                colors={gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.photo}
+              >
+                <Text style={styles.photoInitial}>{initial}</Text>
+              </LinearGradient>
+            )}
+            <View style={styles.photoBadge}>
+              {photoUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="camera" size={16} color="#FFFFFF" />
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+        {!!photoError && <Text style={styles.error}>{photoError}</Text>}
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>ข้อมูลส่วนตัว</Text>
@@ -182,6 +260,31 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
 const styles = StyleSheet.create({
   content: { gap: spacing.lg, paddingBottom: 40 },
   title: { color: colors.ink, fontSize: 22, fontWeight: '800' },
+  photoSection: { alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm },
+  photoWrap: { width: 96, height: 96 },
+  photo: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    ...shadow.raised,
+  },
+  photoInitial: { color: '#FFFFFF', fontSize: 34, fontWeight: '800' },
+  photoBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    borderWidth: 3,
+    borderColor: colors.bg,
+  },
   subtitle: { color: colors.muted, fontSize: 13.5, lineHeight: 19 },
   card: {
     gap: spacing.lg,
