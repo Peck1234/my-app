@@ -52,4 +52,8 @@ cloudflared.exe
 .watch-backend.log
 .metro.log
 .metro-err.log
+.backend-easy.log
+.backend-easy-err.log
+.metro-easy.log
+.metro-easy-err.log
 scripts/logs/
