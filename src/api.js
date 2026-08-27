@@ -16,7 +16,15 @@ function detectLanBackendHost() {
   return host || '127.0.0.1' // fallback เผื่อไม่ได้รันผ่าน Expo dev server (ไม่ควรเกิดในโปรเจกต์นี้)
 }
 
-const BACKEND_TUNNEL_URL = Constants.expoConfig?.extra?.backendTunnelUrl || null
+// Guards against more than just "missing" (undefined/null/'') - the dev
+// manifest has been observed serving `{}` for this field instead of `null`
+// (stale/serialization quirk somewhere between app.config.js and the actual
+// manifest response). `{}` is truthy, so a naive `|| null` check lets it
+// through, and `${ {} }` template-literal-coerces to the string
+// "[object Object]", silently turning API_BASE into a garbage URL that
+// fails every request with no useful error. Only a non-empty string counts.
+const rawTunnelUrl = Constants.expoConfig?.extra?.backendTunnelUrl
+const BACKEND_TUNNEL_URL = typeof rawTunnelUrl === 'string' && rawTunnelUrl.length > 0 ? rawTunnelUrl : null
 const LAN_BACKEND_HOST = detectLanBackendHost()
 
 const API_BASE = Platform.OS === 'web'
