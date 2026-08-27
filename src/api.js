@@ -301,3 +301,62 @@ export async function fetchSlotHistory(slotId) {
     fallbackMessage: 'ไม่สามารถโหลดประวัติช่องนี้ได้',
   })
 }
+
+export async function fetchMedicineCatalog() {
+  const data = await apiFetchJson('/medicine-catalog', undefined, {
+    retryable: true,
+    fallback: { medicines: [] },
+    fallbackMessage: 'ไม่สามารถโหลดคลังยาได้',
+  })
+  return data.medicines
+}
+
+export async function searchMedicineCatalog(query) {
+  const data = await apiFetchJson(`/medicine-catalog?search=${encodeURIComponent(query || '')}`, undefined, {
+    fallback: { medicines: [] },
+    fallbackMessage: 'ไม่สามารถค้นหายาได้',
+  })
+  return data.medicines
+}
+
+export async function createMedicineCatalogEntry(payload) {
+  return apiFetchJson(
+    '/medicine-catalog',
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    { fallbackMessage: 'ไม่สามารถเพิ่มยาเข้าคลังได้' }
+  )
+}
+
+export async function toggleMedicineFavorite(medicineId) {
+  return apiFetchJson(
+    `/medicine-catalog/${medicineId}/favorite`,
+    { method: 'PUT' },
+    { fallbackMessage: 'ไม่สามารถอัปเดตสถานะติดดาวได้' }
+  )
+}
+
+// `fileAsset` is an expo-document-picker asset ({ uri, name, mimeType } on
+// native, plus a real browser `file` on web) - branch on Platform because RN's
+// fetch/FormData only accepts the { uri, name, type } shape on native, while
+// web needs the actual File object appended directly.
+export async function bulkImportMedicines(fileAsset) {
+  const form = new FormData()
+  if (Platform.OS === 'web' && fileAsset.file) {
+    form.append('file', fileAsset.file)
+  } else {
+    form.append('file', {
+      uri: fileAsset.uri,
+      name: fileAsset.name || 'medicines.csv',
+      type: fileAsset.mimeType || 'text/csv',
+    })
+  }
+
+  // No Content-Type header here on purpose - fetch/RN sets the multipart
+  // boundary itself only when it's the one building the body from a raw
+  // FormData; setting it manually strips the boundary and breaks the upload.
+  return apiFetchJson(
+    '/medicine-catalog/bulk-import',
+    { method: 'POST', body: form },
+    { fallbackMessage: 'นำเข้าไฟล์ไม่สำเร็จ' }
+  )
+}

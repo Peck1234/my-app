@@ -11,6 +11,7 @@ import MissedMedicationsScreen from './MissedMedicationsScreen'
 import StatsDashboardScreen from './StatsDashboardScreen'
 import DispenseLogScreen from './DispenseLogScreen'
 import SlotManagementScreen from './SlotManagementScreen'
+import MedicineDatabaseScreen from './MedicineDatabaseScreen'
 import AccountSettingsScreen from './AccountSettingsScreen'
 import { useMedicationReminders } from '../hook/useMedicationReminders'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
@@ -19,6 +20,7 @@ const TAB_EYEBROWS = {
   patients: 'รายชื่อผู้ป่วย',
   missed: 'ยาที่ค้างจ่าย',
   slots: 'จัดการช่องยา',
+  medicines: 'คลังยากลาง',
   stats: 'สถิติการจ่ายยา',
   logs: 'ประวัติการจ่ายยา',
 }
@@ -27,6 +29,7 @@ const TAB_ICONS = {
   patients: 'people',
   missed: 'alert-circle',
   slots: 'grid',
+  medicines: 'medkit',
   stats: 'bar-chart',
 }
 
@@ -37,6 +40,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
   const [activeTab, setActiveTab] = useState('patients')
   const [patientSubScreenActive, setPatientSubScreenActive] = useState(false)
   const [slotSubScreenActive, setSlotSubScreenActive] = useState(false)
+  const [medicineSubScreenActive, setMedicineSubScreenActive] = useState(false)
   const [pendingAssignPatient, setPendingAssignPatient] = useState(null)
   const [showAccountSettings, setShowAccountSettings] = useState(false)
   const initial = nurse.full_name?.trim()?.charAt(0) || 'N'
@@ -64,7 +68,8 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
     activeTab !== 'stats' &&
     activeTab !== 'logs' &&
     !(activeTab === 'patients' && patientSubScreenActive) &&
-    !(activeTab === 'slots' && slotSubScreenActive)
+    !(activeTab === 'slots' && slotSubScreenActive) &&
+    !(activeTab === 'medicines' && medicineSubScreenActive)
 
   return (
     <View style={styles.shell}>
@@ -110,6 +115,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
               { key: 'patients', label: 'รายชื่อผู้ป่วย' },
               { key: 'missed', label: 'ยาที่ค้างจ่าย', badge: dueCount },
               { key: 'slots', label: 'จัดการช่องยา' },
+              { key: 'medicines', label: 'คลังยา' },
             ].map((tab) => {
               const isActive = activeTab === tab.key
               return (
@@ -165,6 +171,8 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
             presetAssignPatient={pendingAssignPatient}
             onConsumedPresetAssign={() => setPendingAssignPatient(null)}
           />
+        ) : activeTab === 'medicines' ? (
+          <MedicineDatabaseScreen onSubScreenChange={setMedicineSubScreenActive} />
         ) : activeTab === 'stats' ? (
           <StatsDashboardScreen
             onBack={() => setActiveTab('patients')}

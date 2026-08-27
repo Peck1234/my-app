@@ -11,9 +11,10 @@ import {
   View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { createPatient, fetchPatientMedications, updatePatient } from '../api'
+import { createPatient, fetchMedicineCatalog, fetchPatientMedications, updatePatient } from '../api'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
+import MedicineAutocompleteField from '../components/MedicineAutocompleteField'
 import PatientQrCodesScreen from './PatientQrCodesScreen'
 import { colors, radius } from '../constants/theme'
 
@@ -47,6 +48,17 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [savedQrData, setSavedQrData] = useState(null)
+  const [medicineCatalog, setMedicineCatalog] = useState([])
+
+  useEffect(() => {
+    // Best-effort - if the catalog fails to load, the drug-name field just
+    // behaves as plain free-text (no dropdown), same as before this feature
+    // existed, so a failure here is silently swallowed rather than blocking
+    // the whole form.
+    fetchMedicineCatalog()
+      .then(setMedicineCatalog)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!isEditing) return
@@ -79,6 +91,24 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
 
   const removeMedication = (key) => {
     setMedications((list) => list.filter((med) => med.key !== key))
+  }
+
+  // Auto-fills standard_dose/purpose from the catalog entry on selection -
+  // the nurse can still edit either field afterward for a patient who needs
+  // a non-standard dose, this just saves retyping the common case.
+  const selectCatalogMedicine = (key, medicine) => {
+    setMedications((list) =>
+      list.map((med) =>
+        med.key === key
+          ? {
+              ...med,
+              drug_name: medicine.drug_name,
+              standard_dose: medicine.standard_dose || '',
+              purpose: medicine.purpose || '',
+            }
+          : med
+      )
+    )
   }
 
   const handleSave = async () => {
@@ -208,11 +238,11 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
               </TouchableOpacity>
             </View>
 
-            <Field
-              label="ชื่อยา *"
+            <MedicineAutocompleteField
               value={med.drug_name}
               onChangeText={(v) => updateMedicationField(med.key, 'drug_name', v)}
-              placeholder="เช่น Paracetamol"
+              onSelectMedicine={(medicine) => selectCatalogMedicine(med.key, medicine)}
+              medicines={medicineCatalog}
             />
             <Field
               label="ขนาดมาตรฐาน"
