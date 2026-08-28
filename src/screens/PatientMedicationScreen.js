@@ -8,12 +8,14 @@ import {
   View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { fetchPatientMedications } from '../api'
+import { fetchPatientMedications, fetchPatientMealCassettes } from '../api'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
 import FadeInView from '../components/FadeInView'
 import DispenseCompleteScreen from './DispenseCompleteScreen'
 import MedicationLocatorScreen from './MedicationLocatorScreen'
+import PatientQrCodesScreen from './PatientQrCodesScreen'
+import CassetteDetailScreen from './CassetteDetailScreen'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 function isCurrentSlot(timeSlot) {
@@ -31,6 +33,11 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
   const [error, setError] = useState(null)
   const [locating, setLocating] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [viewingQr, setViewingQr] = useState(false)
+  const [qrCassettes, setQrCassettes] = useState([])
+  const [loadingQr, setLoadingQr] = useState(false)
+  const [openCassetteId, setOpenCassetteId] = useState(null)
+  const [creatingMeal, setCreatingMeal] = useState(null)
 
   const visibleMedications = useMemo(() => {
     if (showAll) return medications
@@ -50,6 +57,57 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
   useEffect(() => {
     loadMedications()
   }, [loadMedications])
+
+  const openQrCodes = () => {
+    setViewingQr(true)
+    setLoadingQr(true)
+    fetchPatientMealCassettes(patient.patient_id)
+      .then(setQrCassettes)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoadingQr(false))
+  }
+
+  if (openCassetteId || creatingMeal) {
+    return (
+      <FadeInView key="cassette-detail">
+        <CassetteDetailScreen
+          patient={patient}
+          cassetteId={openCassetteId}
+          meal={creatingMeal}
+          onBack={() => {
+            setOpenCassetteId(null)
+            setCreatingMeal(null)
+            // Refresh the QR list behind this so any edit/add/remove/create
+            // just made (drug name, dose, count, brand-new meal) shows up
+            // immediately rather than the stale snapshot fetched before this
+            // cassette screen was opened.
+            openQrCodes()
+          }}
+        />
+      </FadeInView>
+    )
+  }
+
+  if (viewingQr) {
+    if (loadingQr) {
+      return (
+        <FadeInView key="qr-loading" style={styles.centerStage}>
+          <ActivityIndicator color={colors.accent} />
+        </FadeInView>
+      )
+    }
+    return (
+      <FadeInView key="qr">
+        <PatientQrCodesScreen
+          patient={patient}
+          cassettes={qrCassettes}
+          onDone={() => setViewingQr(false)}
+          onOpenCassette={(cassette) => setOpenCassetteId(cassette.cassette_id)}
+          onCreateMeal={(meal) => setCreatingMeal(meal)}
+        />
+      </FadeInView>
+    )
+  }
 
   if (locating) {
     return (
@@ -103,6 +161,13 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
           variant="primary"
           icon="locate-outline"
           style={styles.scanButton}
+        />
+        <Button
+          label="ดู QR ตลับยา"
+          onPress={openQrCodes}
+          variant="outline"
+          icon="qr-code-outline"
+          style={styles.qrButton}
         />
 
         <View style={styles.filterRow}>
@@ -245,6 +310,9 @@ const styles = StyleSheet.create({
   },
   scanButton: {
     marginTop: spacing.md,
+  },
+  qrButton: {
+    marginTop: spacing.sm,
   },
   filterRow: {
     flexDirection: 'row',

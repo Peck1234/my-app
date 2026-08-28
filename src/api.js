@@ -119,15 +119,110 @@ async function apiFetchJson(path, options, { retryable = false, fallback = {}, f
   return data
 }
 
-export async function verifyDispense({ nurseQr, patientQr, cassetteQr }) {
+// Step 1 of the two-step dispense flow: resolves a scanned cassette QR to
+// every medication currently in that meal (never a decode of the QR itself -
+// the meal-cassette architecture deliberately keeps the QR a bare reference
+// so drugs can be added/removed later without reprinting it).
+export async function verifyCassette({ nurseQr, patientQr, cassetteQr }) {
   return apiFetchJson(
-    '/verify-dispense',
+    '/verify-cassette',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nurse_qr: nurseQr, patient_qr: patientQr, cassette_qr: cassetteQr }),
     },
     { fallbackMessage: 'ตรวจสอบไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
+// Step 2: confirm one or more drugs from that same cassette. Each id in
+// medicationIds resolves independently server-side (one can succeed while
+// another fails, e.g. already dispensed by someone else in between) - always
+// read `results` per-id rather than treating the call as all-or-nothing.
+export async function dispenseMedications({ nurseQr, patientQr, cassetteQr, medicationIds }) {
+  return apiFetchJson(
+    '/dispense-medications',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nurse_qr: nurseQr,
+        patient_qr: patientQr,
+        cassette_qr: cassetteQr,
+        medication_ids: medicationIds,
+      }),
+    },
+    { fallbackMessage: 'จ่ายยาไม่สำเร็จ กรุณาลองใหม่' }
+  )
+}
+
+export async function fetchPatientMealCassettes(patientId) {
+  const data = await apiFetchJson(`/patients/${patientId}/meal-cassettes`, undefined, {
+    retryable: true,
+    fallback: { cassettes: [] },
+    fallbackMessage: 'ไม่สามารถโหลดตลับยาได้',
+  })
+  return data.cassettes
+}
+
+// Single-cassette detail - what CassetteDetailScreen opens with when a nurse
+// taps one QR card, and re-fetches after every edit/remove so the drug list
+// shown always reflects the server, never a locally-patched guess.
+export async function fetchCassetteDetail(patientId, cassetteId) {
+  return apiFetchJson(`/patients/${patientId}/meal-cassettes/${cassetteId}`, undefined, {
+    retryable: true,
+    fallbackMessage: 'ไม่สามารถโหลดข้อมูลตลับยาได้',
+  })
+}
+
+// Edits one drug already inside a cassette - scoped to just that medication,
+// unlike updatePatient() which replaces the patient's entire medication list.
+export async function updateCassetteMedicine(patientId, cassetteId, medicationId, { drugName, standardDose, purpose, dose, instruction }) {
+  return apiFetchJson(
+    `/patients/${patientId}/meal-cassettes/${cassetteId}/medications/${medicationId}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        drug_name: drugName,
+        standard_dose: standardDose || null,
+        purpose: purpose || null,
+        dose,
+        instruction: instruction || null,
+      }),
+    },
+    { fallbackMessage: 'ไม่สามารถแก้ไขยาได้' }
+  )
+}
+
+export async function removeCassetteMedicine(patientId, cassetteId, medicationId) {
+  return apiFetchJson(
+    `/patients/${patientId}/meal-cassettes/${cassetteId}/medications/${medicationId}`,
+    { method: 'DELETE' },
+    { fallbackMessage: 'ไม่สามารถลบยาได้' }
+  )
+}
+
+// The core new "add a drug from the catalog to a patient's meal" flow.
+// Get-or-creates the (patient, meal) cassette server-side - `is_new` in the
+// response tells the caller whether a brand-new QR was just minted (show the
+// print/save screen) or an existing one was reused (just toast success).
+export async function assignMedicineToMeal(patientId, { meal, drugName, standardDose, purpose, dose, instruction }) {
+  return apiFetchJson(
+    `/patients/${patientId}/meal-cassettes/assign-medicine`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        meal,
+        drug_name: drugName,
+        standard_dose: standardDose || null,
+        purpose: purpose || null,
+        dose,
+        instruction: instruction || null,
+      }),
+    },
+    { fallbackMessage: 'ไม่สามารถเพิ่มยาเข้าตลับได้' }
   )
 }
 

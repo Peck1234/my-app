@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import { CameraView } from 'expo-camera'
 import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import CameraPermissionGate from '../components/CameraPermissionGate'
 import Button from '../components/Button'
-import { verifyDispense } from '../api'
+import { verifyCassette, dispenseMedications } from '../api'
 import { normalizeQrValue } from '../utils/qr'
-import { getBoxRect, matchesSlot, matchesCassette, isTargetMedication } from '../utils/medicationLocatorLogic'
+import {
+  getBoxRect,
+  matchesSlot,
+  groupMedicationsByCassetteQr,
+  matchesCassetteQr,
+  isTargetCassette,
+} from '../utils/medicationLocatorLogic'
 import { CAMERA_FACING, QR_BARCODE_TYPES } from '../constants/camera'
+import { MEAL_LABELS } from '../constants/meals'
 import { colors, radius } from '../constants/theme'
 
 // expo-camera's onBarcodeScanned reports ONE result per native event — confirmed
@@ -46,7 +53,7 @@ const TARGET_COLOR = '#22c55e'
 // to label/color each box when several codes are visible at once. Purely
 // derived from current props/state each render, so it can't go stale even if
 // the target medication or patient changes while a code stays in frame.
-function resolveCodeIdentity({ stage, data, patient, medicationByQr, targetMedication }) {
+function resolveCodeIdentity({ stage, data, patient, cassetteMedicationsByQr, targetMedication }) {
   if (stage === 'slot') {
     if (data === patient.qr_code_slot) {
       return { label: 'ช่องนี้', color: TARGET_COLOR }
@@ -54,14 +61,12 @@ function resolveCodeIdentity({ stage, data, patient, medicationByQr, targetMedic
     return { label: 'ไม่ใช่ช่องนี้', color: colors.muted }
   }
 
-  const medication = medicationByQr[data]
-  if (!medication) {
+  const meds = cassetteMedicationsByQr[data]
+  if (!meds || meds.length === 0) {
     return { label: 'ไม่รู้จัก', color: colors.muted }
   }
-  if (targetMedication && medication.order_id === targetMedication.order_id) {
-    return { label: medication.drug_name, color: TARGET_COLOR }
-  }
-  return { label: medication.drug_name, color: colors.accent }
+  const label = meds.length === 1 ? meds[0].drug_name : `${meds[0].drug_name} +${meds.length - 1}`
+  return { label, color: isTargetCassette(data, targetMedication) ? TARGET_COLOR : colors.accent }
 }
 
 function StageBadge({ stage, hasSlotStage }) {
@@ -216,22 +221,21 @@ function SlotConfirmModal({ patient, onConfirm }) {
   )
 }
 
-function CassetteTargetPanel({ targetMedication, query, onChangeQuery, checkedCount, totalCount }) {
+function CassetteTargetPanel({ targetMedication, query, onChangeQuery, verifying, totalCount }) {
   return (
     <View style={styles.targetPanel} pointerEvents="box-none">
       <View style={styles.targetCard}>
-        <Text style={styles.targetEyebrow}>กำลังหาให้คุณ</Text>
+        <Text style={styles.targetEyebrow}>{verifying ? 'กำลังตรวจสอบตลับยา...' : 'กำลังหาให้คุณ'}</Text>
         {targetMedication ? (
           <Text style={styles.targetName} numberOfLines={1}>
             {targetMedication.drug_name}
             {targetMedication.standard_dose ? ` ${targetMedication.standard_dose}` : ''}
+            {' '}· มื้อ{MEAL_LABELS[targetMedication.meal]}
           </Text>
         ) : (
           <Text style={styles.targetName}>จ่ายยาครบทุกรายการแล้ว</Text>
         )}
-        {!!totalCount && (
-          <Text style={styles.targetProgress}>ส่องแล้ว {checkedCount} / เหลืออีก {totalCount} รายการ</Text>
-        )}
+        {!!totalCount && <Text style={styles.targetProgress}>เหลืออีก {totalCount} รายการ</Text>}
       </View>
 
       <View style={styles.searchBar}>
@@ -281,20 +285,90 @@ function ScanFeedback({ feedback }) {
   )
 }
 
-function CheckedList({ items }) {
-  if (items.length === 0) return null
+// Shown once a cassette QR resolves - the drug list is always the fresh copy
+// verify-cassette just returned (never decoded from the QR itself), so this
+// modal is the one place in the flow that can show more than one drug at
+// once. Each row is independently checkable, plus a one-tap "confirm all"
+// shortcut, per the 5-rights-of-administration + partial-dispense reasoning
+// (a nurse may only have some of a meal's drugs on hand right now).
+function CassetteChecklistModal({ cassette, checkedIds, dispensingIds, onToggle, onConfirmSelected, onConfirmAll, onClose }) {
+  const pending = cassette.medications.filter((m) => !m.is_dispensed_today)
+  const allDone = pending.length === 0
+  const isDispensing = dispensingIds.size > 0
+
   return (
-    <View style={styles.checkedWrap} pointerEvents="none">
-      <Text style={styles.checkedLabel}>ตัดออกแล้ว (ไม่ใช่ตัวที่หา)</Text>
-      <View style={styles.checkedRow}>
-        {items.map((name) => (
-          <View key={name} style={styles.checkedChip}>
-            <Ionicons name="close" size={10} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.checkedChipText} numberOfLines={1}>
-              {name}
-            </Text>
+    <View style={styles.modalBackdrop} pointerEvents="box-none">
+      <View style={styles.modalCard}>
+        <View style={styles.modalHeaderRow}>
+          <Ionicons name="checkmark-circle" size={18} color={TARGET_COLOR} />
+          <Text style={styles.modalEyebrow}>มื้อ{MEAL_LABELS[cassette.meal]}</Text>
+          <View style={{ flex: 1 }} />
+          <Pressable onPress={onClose} hitSlop={10}>
+            <Ionicons name="close" size={20} color={colors.muted} />
+          </Pressable>
+        </View>
+
+        <ScrollView style={styles.checklistScroll} contentContainerStyle={styles.checklistScrollContent}>
+          {cassette.medications.map((med) => {
+            const isDispensed = !!med.is_dispensed_today
+            const isChecked = checkedIds.has(med.order_id)
+            const isBusy = dispensingIds.has(med.order_id)
+            return (
+              <Pressable
+                key={med.order_id}
+                style={[styles.checklistRow, isDispensed && styles.checklistRowDone]}
+                onPress={() => !isDispensed && !isBusy && onToggle(med.order_id)}
+                disabled={isDispensed || isBusy}
+              >
+                <Ionicons
+                  name={isDispensed ? 'checkmark-circle' : isChecked ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={isDispensed ? colors.success : isChecked ? colors.accent : colors.muted}
+                />
+                <View style={styles.checklistRowText}>
+                  <Text style={[styles.checklistDrugName, isDispensed && styles.checklistDrugNameDone]} numberOfLines={1}>
+                    {med.drug_name}
+                    {med.standard_dose ? ` ${med.standard_dose}` : ''}
+                  </Text>
+                  {!!(med.dose || med.instruction) && (
+                    <Text style={styles.checklistDrugMeta} numberOfLines={1}>
+                      {[med.dose, med.instruction].filter(Boolean).join(' · ')}
+                    </Text>
+                  )}
+                </View>
+                {isDispensed && <Text style={styles.checklistDoneLabel}>จ่ายแล้ว</Text>}
+                {isBusy && <Ionicons name="hourglass-outline" size={16} color={colors.muted} />}
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+
+        {allDone ? (
+          <Pressable style={styles.modalButton} onPress={onClose}>
+            <Text style={styles.modalButtonText}>เสร็จสิ้นมื้อนี้</Text>
+            <Ionicons name="arrow-forward" size={16} color="#fff" />
+          </Pressable>
+        ) : (
+          <View style={styles.checklistActions}>
+            <Pressable
+              style={[styles.modalButtonOutline, (checkedIds.size === 0 || isDispensing) && styles.modalButtonDisabled]}
+              onPress={onConfirmSelected}
+              disabled={checkedIds.size === 0 || isDispensing}
+            >
+              <Text style={styles.modalButtonOutlineText}>
+                ยืนยันที่เลือก{checkedIds.size > 0 ? ` (${checkedIds.size})` : ''}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.modalButton, styles.checklistConfirmAllButton, isDispensing && styles.modalButtonDisabled]}
+              onPress={onConfirmAll}
+              disabled={isDispensing}
+            >
+              <Text style={styles.modalButtonText}>ยืนยันทั้งหมด</Text>
+              <Ionicons name="checkmark-done" size={16} color="#fff" />
+            </Pressable>
           </View>
-        ))}
+        )}
       </View>
     </View>
   )
@@ -310,7 +384,14 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
   // Mirrors codesMapRef for rendering: every QR code currently believed to be
   // in frame, each with its own on-screen position.
   const [visibleCodes, setVisibleCodes] = useState([]) // [{ data, rect }]
-  const [checkedWrongQr, setCheckedWrongQr] = useState({}) // qr_code_cassette -> drug_name
+  // The cassette a scan just resolved to, via verify-cassette - always the
+  // fresh server copy (never decoded from the QR itself), since the whole
+  // point of the meal-cassette design is that a cassette's drug list can
+  // change without its QR being reprinted. null while no cassette is open.
+  const [scannedCassette, setScannedCassette] = useState(null) // { qrCode, cassetteId, meal, medications }
+  const [verifyingCassette, setVerifyingCassette] = useState(false)
+  const [checkedIds, setCheckedIds] = useState(() => new Set())
+  const [dispensingIds, setDispensingIds] = useState(() => new Set())
   // Local, optimistically-updated copy so the target can advance to the next
   // due medication right after a dispense, without waiting on a server refetch —
   // the parent still gets the authoritative reload once the nurse exits this screen.
@@ -338,42 +419,91 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
     return pendingMedications.find((item) => item.is_due) || pendingMedications[0] || null
   }, [pendingMedications, query])
 
-  const medicationByQr = useMemo(() => {
-    const map = {}
-    for (const item of localMedications) {
-      if (item.qr_code_cassette) map[item.qr_code_cassette] = item
-    }
-    return map
-  }, [localMedications])
+  const cassetteMedicationsByQr = useMemo(
+    () => groupMedicationsByCassetteQr(localMedications),
+    [localMedications]
+  )
 
   const syncVisibleCodes = () => {
     setVisibleCodes(Array.from(codesMapRef.current, ([data, v]) => ({ data, rect: v.rect })))
   }
 
-  const handleDispense = async (cassetteQr, medication) => {
-    busyRef.current = true
+  // Closes the checklist and releases everything the cassette stage was
+  // holding onto, whether the nurse dismissed it manually or finished every
+  // drug in it - the next scan should start clean, same code lock as the
+  // slot->cassette stage transition.
+  const closeCassette = () => {
+    setScannedCassette(null)
+    setCheckedIds(new Set())
+    busyRef.current = false
+    codesMapRef.current.clear()
+    setVisibleCodes([])
+    lastProcessedRef.current.clear()
+  }
+
+  const toggleChecked = (orderId) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(orderId)) next.delete(orderId)
+      else next.add(orderId)
+      return next
+    })
+  }
+
+  const confirmDispense = async (orderIds) => {
+    if (orderIds.length === 0 || !scannedCassette) return
+    setDispensingIds(new Set(orderIds))
     try {
-      const data = await verifyDispense({
+      const data = await dispenseMedications({
         nurseQr: nurse.qr_code_nurse,
         patientQr: patient.qr_code_patient,
-        cassetteQr,
+        cassetteQr: scannedCassette.qrCode,
+        medicationIds: orderIds,
       })
-      if (data.result === 'correct') {
-        setLocalMedications((list) =>
-          list.map((item) =>
-            item.order_id === medication.order_id ? { ...item, is_dispensed_today: true } : item
-          )
+      const results = data.results || []
+      const succeededIds = results.filter((r) => r.result === 'correct').map((r) => r.order_id)
+      const failed = results.filter((r) => r.result !== 'correct')
+
+      setScannedCassette((prev) =>
+        prev
+          ? {
+              ...prev,
+              medications: prev.medications.map((med) =>
+                succeededIds.includes(med.order_id) ? { ...med, is_dispensed_today: true } : med
+              ),
+            }
+          : prev
+      )
+      setLocalMedications((list) =>
+        list.map((item) =>
+          succeededIds.includes(item.order_id) ? { ...item, is_dispensed_today: true } : item
         )
-        setQuery('')
-        setFeedback({ status: 'target', title: data.message, sub: medication.drug_name })
-      } else {
-        setFeedback({ status: 'wrong', title: data.message, sub: medication.drug_name })
+      )
+      setCheckedIds((prev) => {
+        const next = new Set(prev)
+        orderIds.forEach((id) => next.delete(id))
+        return next
+      })
+
+      if (succeededIds.length > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       }
+      if (failed.length > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+        setFeedback({
+          status: succeededIds.length > 0 ? 'target' : 'wrong',
+          title: succeededIds.length > 0 ? `จ่ายสำเร็จ ${succeededIds.length} รายการ` : 'จ่ายยาไม่สำเร็จ',
+          sub: failed.map((f) => `${f.drug_name}: ${f.message}`).join(', '),
+        })
+      } else {
+        setFeedback({ status: 'target', title: `จ่ายสำเร็จ ${succeededIds.length} รายการ` })
+      }
+      setTimeout(() => setFeedback(null), 2200)
     } catch (err) {
-      setFeedback({ status: 'wrong', title: err.message, sub: medication.drug_name })
-    } finally {
-      busyRef.current = false
+      setFeedback({ status: 'wrong', title: err.message })
       setTimeout(() => setFeedback(null), 2000)
+    } finally {
+      setDispensingIds(new Set())
     }
   }
 
@@ -402,29 +532,44 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
     lastProcessedRef.current.clear()
   }
 
-  const handleCassetteScan = (data) => {
-    const medication = matchesCassette(data, medicationByQr)
-
-    if (!medication) {
+  const handleCassetteScan = async (data) => {
+    if (!matchesCassetteQr(data, cassetteMedicationsByQr)) {
       setFeedback({ status: 'unknown', title: 'ไม่รู้จัก QR นี้' })
       setTimeout(() => setFeedback(null), 1400)
       return
     }
 
-    if (isTargetMedication(medication, targetMedication)) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-      setFeedback({ status: 'target', title: 'ใช่ตัวนี้! กำลังบันทึกจ่ายยา...', sub: medication.drug_name })
-      busyRef.current = true
-      handleDispense(data, medication)
-      return
+    busyRef.current = true
+    setVerifyingCassette(true)
+    try {
+      const result = await verifyCassette({
+        nurseQr: nurse.qr_code_nurse,
+        patientQr: patient.qr_code_patient,
+        cassetteQr: data,
+      })
+      if (result.result === 'correct') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        setQuery('')
+        setScannedCassette({
+          qrCode: data,
+          cassetteId: result.cassette_id,
+          meal: result.meal,
+          medications: result.medications,
+        })
+        setCheckedIds(new Set())
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+        setFeedback({ status: 'wrong', title: result.message })
+        setTimeout(() => setFeedback(null), 1600)
+        busyRef.current = false
+      }
+    } catch (err) {
+      setFeedback({ status: 'wrong', title: err.message })
+      setTimeout(() => setFeedback(null), 1600)
+      busyRef.current = false
+    } finally {
+      setVerifyingCassette(false)
     }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-    setFeedback({ status: 'wrong', title: 'ไม่ใช่ตัวนี้', sub: medication.drug_name })
-    setCheckedWrongQr((prev) =>
-      prev[data] ? prev : { ...prev, [data]: medication.drug_name }
-    )
-    setTimeout(() => setFeedback(null), 1400)
   }
 
   // Single entry point for actually acting on a code, whether it got here by
@@ -501,12 +646,11 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
 
   const scanStatus = feedback?.status || null
   const singleCode = visibleCodes.length === 1 ? visibleCodes[0] : null
-  const isTargetLock = !!singleCode && (scanStatus === 'target' || slotConfirmed)
+  const isTargetLock = !!singleCode && (scanStatus === 'target' || slotConfirmed || !!scannedCassette)
   const isMultiMode = visibleCodes.length > 1
-  const checkedNames = Object.values(checkedWrongQr)
 
   const identityFor = (data) =>
-    resolveCodeIdentity({ stage, data, patient, medicationByQr, targetMedication })
+    resolveCodeIdentity({ stage, data, patient, cassetteMedicationsByQr, targetMedication })
 
   return (
     <CameraPermissionGate>
@@ -541,22 +685,36 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
             targetMedication={targetMedication}
             query={query}
             onChangeQuery={setQuery}
-            checkedCount={checkedNames.length}
+            verifying={verifyingCassette}
             totalCount={pendingMedications.length}
           />
         )}
 
         <ScanFeedback feedback={feedback} />
 
-        {stage === 'cassette' && <CheckedList items={checkedNames} />}
-
-        {stage === 'cassette' && pendingMedications.length === 0 && (
+        {stage === 'cassette' && !scannedCassette && pendingMedications.length === 0 && (
           <View style={styles.doneButtonWrap} pointerEvents="box-none">
             <Button label="เสร็จสิ้น" onPress={handleExit} variant="success" />
           </View>
         )}
 
         {slotConfirmed && <SlotConfirmModal patient={patient} onConfirm={handleSlotConfirmed} />}
+
+        {!!scannedCassette && (
+          <CassetteChecklistModal
+            cassette={scannedCassette}
+            checkedIds={checkedIds}
+            dispensingIds={dispensingIds}
+            onToggle={toggleChecked}
+            onConfirmSelected={() => confirmDispense(Array.from(checkedIds))}
+            onConfirmAll={() =>
+              confirmDispense(
+                scannedCassette.medications.filter((m) => !m.is_dispensed_today).map((m) => m.order_id)
+              )
+            }
+            onClose={closeCassette}
+          />
+        )}
       </View>
     </CameraPermissionGate>
   )
@@ -734,36 +892,78 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 1,
   },
-  checkedWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 24,
-    gap: 6,
+  checklistScroll: {
+    alignSelf: 'stretch',
+    maxHeight: 320,
+    marginTop: 6,
   },
-  checkedLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 10.5,
-    fontWeight: '700',
+  checklistScrollContent: {
+    gap: 8,
+    paddingBottom: 4,
   },
-  checkedRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  checkedChip: {
+  checklistRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    maxWidth: 150,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    gap: 10,
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  checkedChipText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10.5,
+  checklistRowDone: {
+    opacity: 0.55,
+  },
+  checklistRowText: {
+    flex: 1,
+    gap: 2,
+  },
+  checklistDrugName: {
+    color: colors.ink,
+    fontSize: 14.5,
+    fontWeight: '700',
+  },
+  checklistDrugNameDone: {
+    textDecorationLine: 'line-through',
+  },
+  checklistDrugMeta: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  checklistDoneLabel: {
+    color: colors.success,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  checklistActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+    width: '100%',
+  },
+  modalButtonOutline: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  modalButtonOutlineText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  modalButtonDisabled: {
+    opacity: 0.4,
+  },
+  checklistConfirmAllButton: {
+    flex: 1,
+    width: undefined,
+    marginTop: 0,
   },
   doneButtonWrap: {
     position: 'absolute',

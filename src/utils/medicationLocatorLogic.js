@@ -36,14 +36,29 @@ export function matchesSlot(scannedData, patientSlotQr) {
   return scannedData === patientSlotQr
 }
 
-// Stage 2: look up a scanned code against the patient's medication cassette
-// QRs. Returns the matched medication, or null if the code isn't recognized.
-export function matchesCassette(scannedData, medicationByQr) {
-  return medicationByQr[scannedData] || null
+// Stage 2, meal-cassette architecture: one QR now covers every drug in a
+// patient's meal, not a single drug, so medications sharing a cassette QR
+// group under it instead of each getting their own 1:1 entry.
+export function groupMedicationsByCassetteQr(medications) {
+  const map = {}
+  for (const item of medications) {
+    if (!item.qr_code_cassette) continue
+    if (!map[item.qr_code_cassette]) map[item.qr_code_cassette] = []
+    map[item.qr_code_cassette].push(item)
+  }
+  return map
 }
 
-// Is this matched medication the one the AR flow is currently pointing the
-// nurse toward (vs. some other, still-pending medication for the patient)?
-export function isTargetMedication(medication, targetMedication) {
-  return !!medication && !!targetMedication && medication.order_id === targetMedication.order_id
+// Does a scanned code match any cassette this patient has (regardless of
+// which drugs are currently inside it - that list is only ever trusted fresh
+// from verify-cassette, never inferred from this local grouping)?
+export function matchesCassetteQr(scannedData, cassetteMedicationsByQr) {
+  return Object.prototype.hasOwnProperty.call(cassetteMedicationsByQr, scannedData)
+}
+
+// Is this scanned cassette QR the one containing the medication the AR flow
+// is currently pointing the nurse toward (vs. some other, still-pending
+// medication in a different meal)?
+export function isTargetCassette(scannedData, targetMedication) {
+  return !!targetMedication && targetMedication.qr_code_cassette === scannedData
 }

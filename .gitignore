@@ -50,6 +50,7 @@ cloudflared.exe
 .backend.log
 .backend-err.log
 .watch-backend.log
+.watch-backend-out.log
 .metro.log
 .metro-err.log
 .backend-easy.log
@@ -57,3 +58,10 @@ cloudflared.exe
 .metro-easy.log
 .metro-easy-err.log
 scripts/logs/
+
+# backend tunnel (ngrok) — downloaded binary + per-machine authtoken config,
+# regenerated/re-authenticated fresh per machine (see start-app-easy.ps1)
+ngrok-v3/
+.ngrok-v3-config.yml
+.backend-ngrok.log
+.backend-ngrok-v3.log

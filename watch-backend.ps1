@@ -35,16 +35,35 @@ function Write-Log($message, $color = "White") {
     Add-Content -Path $watchLogFile -Value $line
 }
 
+# Same quirk start-backend.ps1 works around: this machine's configured DNS
+# resolver can fail to resolve freshly-created *.trycloudflare.com subdomains
+# even though the tunnel is genuinely live on Cloudflare's edge. Without this
+# fallback, Test-BackendHealthy below would flag a perfectly healthy tunnel as
+# down, restart it, get a brand-new URL that ALSO can't be resolved locally,
+# and repeat forever - burning through a new tunnel URL every check interval
+# without ever actually being down for real users on other networks.
+function Test-PublicDnsSeesHost($hostname) {
+    try {
+        $result = Resolve-DnsName -Name $hostname -Server 8.8.8.8 -Type A -ErrorAction Stop
+        return $null -ne $result
+    } catch {
+        return $false
+    }
+}
+
 function Test-BackendHealthy {
     if (-not (Test-Path $tunnelUrlFile)) { return $false }
     $url = (Get-Content $tunnelUrlFile -Raw).Trim()
     if (-not $url) { return $false }
     try {
         $r = Invoke-WebRequest -Uri "$url/api/health" -TimeoutSec 6 -UseBasicParsing -ErrorAction Stop
-        return $r.StatusCode -eq 200
+        if ($r.StatusCode -eq 200) { return $true }
     } catch {
-        return $false
+        # not up yet - fall through to the public-DNS fallback check below
     }
+
+    $hostname = ([Uri]$url).Host
+    return Test-PublicDnsSeesHost $hostname
 }
 
 Write-Log "watch-backend.ps1 started. Checking every ${CheckIntervalSeconds}s. Log: $watchLogFile" "Cyan"

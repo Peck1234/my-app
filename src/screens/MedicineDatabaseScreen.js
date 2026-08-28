@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import FadeInView from '../components/FadeInView'
 import MedicineAddScreen from './MedicineAddScreen'
 import MedicineImportScreen from './MedicineImportScreen'
+import MedicineAssignScreen from './MedicineAssignScreen'
 import { fetchMedicineCatalog, toggleMedicineFavorite } from '../api'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
@@ -12,8 +13,9 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
-  const [view, setView] = useState('list') // list | add | import
+  const [view, setView] = useState('list') // list | add | import | assign
   const [togglingId, setTogglingId] = useState(null)
+  const [assigningMedicine, setAssigningMedicine] = useState(null)
 
   useEffect(() => {
     onSubScreenChange?.(view !== 'list')
@@ -81,6 +83,24 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
     )
   }
 
+  if (view === 'assign' && assigningMedicine) {
+    return (
+      <FadeInView key="assign">
+        <MedicineAssignScreen
+          medicine={assigningMedicine}
+          onDone={() => {
+            setAssigningMedicine(null)
+            setView('list')
+          }}
+          onCancel={() => {
+            setAssigningMedicine(null)
+            setView('list')
+          }}
+        />
+      </FadeInView>
+    )
+  }
+
   return (
     <View style={styles.shell}>
       <View style={styles.headerRow}>
@@ -139,7 +159,14 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
                 />
               </TouchableOpacity>
 
-              <View style={styles.medicineInfo}>
+              <TouchableOpacity
+                style={styles.medicineInfo}
+                onPress={() => {
+                  setAssigningMedicine(med)
+                  setView('assign')
+                }}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.medicineName}>
                   {med.drug_name}
                   {med.generic_name ? `  ·  ${med.generic_name}` : ''}
@@ -155,7 +182,8 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
                     <Text style={styles.warningText}>{med.contraindication}</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} style={styles.chevron} />
             </View>
           ))}
         </View>
@@ -221,6 +249,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   starButton: { paddingTop: 2 },
+  chevron: { alignSelf: 'center' },
   medicineInfo: { flex: 1, gap: 4 },
   medicineName: { color: colors.ink, fontSize: 14.5, fontWeight: '800' },
   metaRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 2 },

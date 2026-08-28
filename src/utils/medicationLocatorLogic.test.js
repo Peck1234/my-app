@@ -1,4 +1,10 @@
-import { getBoxRect, matchesSlot, matchesCassette, isTargetMedication } from './medicationLocatorLogic'
+import {
+  getBoxRect,
+  matchesSlot,
+  groupMedicationsByCassetteQr,
+  matchesCassetteQr,
+  isTargetCassette,
+} from './medicationLocatorLogic'
 
 describe('getBoxRect', () => {
   it('computes a box from cornerPoints (Android-style result)', () => {
@@ -66,41 +72,62 @@ describe('matchesSlot', () => {
   })
 })
 
-describe('matchesCassette', () => {
-  const medicationByQr = {
-    'CASSETTE-0001': { order_id: 1, drug_name: 'Paracetamol' },
-    'CASSETTE-0002': { order_id: 2, drug_name: 'Amoxicillin' },
-  }
+describe('groupMedicationsByCassetteQr', () => {
+  it('groups multiple drugs sharing the same cassette QR (1 QR = 1 meal)', () => {
+    const medications = [
+      { order_id: 1, drug_name: 'Paracetamol', qr_code_cassette: 'CASSETTE-3-breakfast' },
+      { order_id: 2, drug_name: 'Amoxicillin', qr_code_cassette: 'CASSETTE-3-breakfast' },
+      { order_id: 3, drug_name: 'Glipizide', qr_code_cassette: 'CASSETTE-3-lunch' },
+    ]
 
-  it('returns the matching medication for a known cassette QR', () => {
-    expect(matchesCassette('CASSETTE-0001', medicationByQr)).toEqual({ order_id: 1, drug_name: 'Paracetamol' })
+    expect(groupMedicationsByCassetteQr(medications)).toEqual({
+      'CASSETTE-3-breakfast': [
+        { order_id: 1, drug_name: 'Paracetamol', qr_code_cassette: 'CASSETTE-3-breakfast' },
+        { order_id: 2, drug_name: 'Amoxicillin', qr_code_cassette: 'CASSETTE-3-breakfast' },
+      ],
+      'CASSETTE-3-lunch': [{ order_id: 3, drug_name: 'Glipizide', qr_code_cassette: 'CASSETTE-3-lunch' }],
+    })
   })
 
-  it('returns null for an unrecognized QR code', () => {
-    expect(matchesCassette('CASSETTE-9999', medicationByQr)).toBeNull()
+  it('skips medications with no cassette QR', () => {
+    expect(groupMedicationsByCassetteQr([{ order_id: 1, drug_name: 'Paracetamol', qr_code_cassette: null }])).toEqual({})
   })
 
-  it('returns null when the QR map is empty', () => {
-    expect(matchesCassette('CASSETTE-0001', {})).toBeNull()
+  it('returns an empty map for an empty list', () => {
+    expect(groupMedicationsByCassetteQr([])).toEqual({})
   })
 })
 
-describe('isTargetMedication', () => {
-  const target = { order_id: 5, drug_name: 'Glipizide' }
+describe('matchesCassetteQr', () => {
+  const cassetteMedicationsByQr = {
+    'CASSETTE-3-breakfast': [{ order_id: 1, drug_name: 'Paracetamol' }],
+  }
 
-  it('returns true when the matched medication is the current target', () => {
-    expect(isTargetMedication({ order_id: 5, drug_name: 'Glipizide' }, target)).toBe(true)
+  it('returns true for a known cassette QR', () => {
+    expect(matchesCassetteQr('CASSETTE-3-breakfast', cassetteMedicationsByQr)).toBe(true)
   })
 
-  it('returns false when the matched medication is a different pending item', () => {
-    expect(isTargetMedication({ order_id: 6, drug_name: 'Diacerein' }, target)).toBe(false)
+  it('returns false for an unrecognized QR code', () => {
+    expect(matchesCassetteQr('CASSETTE-9999', cassetteMedicationsByQr)).toBe(false)
+  })
+
+  it('returns false when the QR map is empty', () => {
+    expect(matchesCassetteQr('CASSETTE-3-breakfast', {})).toBe(false)
+  })
+})
+
+describe('isTargetCassette', () => {
+  const target = { order_id: 5, drug_name: 'Glipizide', qr_code_cassette: 'CASSETTE-3-lunch' }
+
+  it('returns true when the scanned QR is the target medication\'s cassette', () => {
+    expect(isTargetCassette('CASSETTE-3-lunch', target)).toBe(true)
+  })
+
+  it('returns false when the scanned QR belongs to a different meal', () => {
+    expect(isTargetCassette('CASSETTE-3-breakfast', target)).toBe(false)
   })
 
   it('returns false when there is no current target (e.g. everything already dispensed)', () => {
-    expect(isTargetMedication({ order_id: 5, drug_name: 'Glipizide' }, null)).toBe(false)
-  })
-
-  it('returns false when there is no matched medication', () => {
-    expect(isTargetMedication(null, target)).toBe(false)
+    expect(isTargetCassette('CASSETTE-3-lunch', null)).toBe(false)
   })
 })

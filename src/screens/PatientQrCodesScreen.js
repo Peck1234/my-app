@@ -5,11 +5,21 @@ import QRCode from 'react-native-qrcode-svg'
 import { Ionicons } from '@expo/vector-icons'
 import Button from '../components/Button'
 import { downloadQrCode } from '../utils/downloadQrCode'
+import { MEALS, MEAL_LABELS } from '../constants/meals'
 import { colors, gradients, radius } from '../constants/theme'
 
-export default function PatientQrCodesScreen({ patient, medications, onDone, onAssignToSlot }) {
+// One QR per meal cassette now (not per drug) - `cassettes` is the shape
+// GET /patients/{id}/meal-cassettes returns: [{ cassette_id, meal, qr_code,
+// medications: [...] }]. A cassette's QR is permanent, so this screen is
+// purely a "here's what to print" view, not a one-time generation step -
+// re-opening it later for the same patient shows the exact same QR codes.
+export default function PatientQrCodesScreen({ patient, cassettes, onDone, onAssignToSlot, onOpenCassette, onCreateMeal }) {
   const patientQrRef = useRef(null)
-  const medQrRefs = useRef({})
+  const cassetteQrRefs = useRef({})
+  // A patient rarely starts with all 5 meals in use - lets a nurse add the
+  // ones missing (e.g. only breakfast/dinner so far) right from this screen,
+  // instead of having to go find that meal from the medicine catalog flow.
+  const missingMeals = MEALS.filter((meal) => !cassettes.some((c) => c.meal === meal))
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -22,7 +32,7 @@ export default function PatientQrCodesScreen({ patient, medications, onDone, onA
         </LinearGradient>
         <Text style={styles.title}>รหัส QR สำหรับ {patient.full_name}</Text>
         <Text style={styles.subtitle}>
-          ถ่ายภาพหน้าจอนี้หรือพิมพ์ออกไปติดที่ป้ายข้อมือผู้ป่วยและตลับยาแต่ละรายการ
+          ถ่ายภาพหน้าจอนี้หรือพิมพ์ออกไปติดที่ป้ายข้อมือผู้ป่วยและตลับยาแต่ละมื้อ — QR ตลับล็อกถาวร ไม่ต้องพิมพ์ใหม่แม้จะเพิ่ม/ลดยาข้างในทีหลัง
         </Text>
       </View>
 
@@ -58,30 +68,36 @@ export default function PatientQrCodesScreen({ patient, medications, onDone, onA
         </TouchableOpacity>
       )}
 
-      {medications.length > 0 && (
+      {cassettes.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>ตลับยา ({medications.length} รายการ)</Text>
+          <Text style={styles.sectionTitle}>ตลับยา ({cassettes.length} มื้อ)</Text>
           <View style={styles.medGrid}>
-            {medications.map((med) => (
-              <View key={med.qr_code_cassette} style={styles.medCard}>
+            {cassettes.map((cassette) => (
+              <TouchableOpacity
+                key={cassette.cassette_id}
+                style={styles.medCard}
+                onPress={() => onOpenCassette?.(cassette)}
+                activeOpacity={onOpenCassette ? 0.7 : 1}
+                disabled={!onOpenCassette}
+              >
                 <View style={styles.qrBoxSmall}>
                   <QRCode
-                    value={med.qr_code_cassette}
+                    value={cassette.qr_code}
                     size={110}
-                    getRef={(ref) => (medQrRefs.current[med.qr_code_cassette] = ref)}
+                    getRef={(ref) => (cassetteQrRefs.current[cassette.cassette_id] = ref)}
                   />
                 </View>
-                <Text style={styles.medName} numberOfLines={2}>
-                  {med.drug_name}
-                  {med.standard_dose ? ` ${med.standard_dose}` : ''}
+                <Text style={styles.mealLabel}>มื้อ{MEAL_LABELS[cassette.meal]}</Text>
+                <Text style={styles.medNames} numberOfLines={3}>
+                  {cassette.medications.map((m) => m.drug_name).join(', ')}
                 </Text>
-                <Text style={styles.qrCodeSmall}>{med.qr_code_cassette}</Text>
+                <Text style={styles.qrCodeSmall}>{cassette.qr_code}</Text>
                 <TouchableOpacity
                   style={styles.downloadButton}
                   onPress={() =>
                     downloadQrCode(
-                      { current: medQrRefs.current[med.qr_code_cassette] },
-                      `cassette-${med.qr_code_cassette}.png`
+                      { current: cassetteQrRefs.current[cassette.cassette_id] },
+                      `${cassette.qr_code}.png`
                     )
                   }
                   activeOpacity={0.7}
@@ -89,7 +105,32 @@ export default function PatientQrCodesScreen({ patient, medications, onDone, onA
                   <Ionicons name="download-outline" size={12} color={colors.accent} />
                   <Text style={styles.downloadButtonTextSmall}>ดาวน์โหลด</Text>
                 </TouchableOpacity>
-              </View>
+                {!!onOpenCassette && (
+                  <View style={styles.openHint}>
+                    <Ionicons name="create-outline" size={11} color={colors.muted} />
+                    <Text style={styles.openHintText}>แตะเพื่อดู/แก้ไข</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
+      {!!onCreateMeal && missingMeals.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>เพิ่มมื้อใหม่</Text>
+          <View style={styles.missingMealRow}>
+            {missingMeals.map((meal) => (
+              <TouchableOpacity
+                key={meal}
+                style={styles.missingMealPill}
+                onPress={() => onCreateMeal(meal)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add-circle-outline" size={15} color={colors.accent} />
+                <Text style={styles.missingMealPillText}>มื้อ{MEAL_LABELS[meal]}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </>
@@ -221,6 +262,28 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+  missingMealRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  missingMealPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderStyle: 'dashed',
+    backgroundColor: colors.accentSoft,
+  },
+  missingMealPillText: {
+    color: colors.accent,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
   medCard: {
     flexBasis: '47%',
     flexGrow: 1,
@@ -237,16 +300,30 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: '#FFFFFF',
   },
-  medName: {
+  mealLabel: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  medNames: {
     color: colors.ink,
-    fontSize: 12.5,
-    fontWeight: '700',
+    fontSize: 12,
     textAlign: 'center',
   },
   qrCodeSmall: {
     color: colors.muted,
     fontSize: 10.5,
     fontFamily: 'monospace',
+  },
+  openHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  openHintText: {
+    color: colors.muted,
+    fontSize: 10,
   },
   doneButton: {
     marginTop: 10,

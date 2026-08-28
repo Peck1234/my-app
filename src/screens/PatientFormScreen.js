@@ -11,11 +11,18 @@ import {
   View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { createPatient, fetchMedicineCatalog, fetchPatientMedications, updatePatient } from '../api'
+import {
+  createPatient,
+  fetchMedicineCatalog,
+  fetchPatientMealCassettes,
+  fetchPatientMedications,
+  updatePatient,
+} from '../api'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
 import MedicineAutocompleteField from '../components/MedicineAutocompleteField'
 import PatientQrCodesScreen from './PatientQrCodesScreen'
+import { MEALS, MEAL_LABELS } from '../constants/meals'
 import { colors, radius } from '../constants/theme'
 
 function emptyMedication() {
@@ -27,8 +34,7 @@ function emptyMedication() {
     purpose: '',
     dose: '',
     instruction: '',
-    time_slot: '',
-    qr_code_cassette: '',
+    meal: '',
   }
 }
 
@@ -74,8 +80,7 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
             purpose: med.purpose || '',
             dose: med.dose || '',
             instruction: med.instruction || '',
-            time_slot: med.time_slot || '',
-            qr_code_cassette: med.qr_code_cassette || '',
+            meal: med.meal || '',
           }))
         )
       })
@@ -120,8 +125,8 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
     }
 
     for (const med of medications) {
-      if (!med.drug_name.trim() || !med.dose.trim() || !med.qr_code_cassette.trim()) {
-        setError('กรุณากรอกชื่อยา, ขนาดยา, และรหัส QR ตลับยาให้ครบทุกรายการ')
+      if (!med.drug_name.trim() || !med.dose.trim() || !med.meal) {
+        setError('กรุณากรอกชื่อยา, ขนาดยา, และเลือกมื้อให้ครบทุกรายการ')
         return
       }
     }
@@ -138,8 +143,7 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
         purpose: med.purpose.trim() || null,
         dose: med.dose.trim(),
         instruction: med.instruction.trim() || null,
-        time_slot: med.time_slot.trim() || null,
-        qr_code_cassette: med.qr_code_cassette.trim(),
+        meal: med.meal,
       })),
     }
 
@@ -152,11 +156,12 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
         const created = await createPatient(payload)
         patientId = created.patient_id
       }
+      const cassettes = await fetchPatientMealCassettes(patientId)
       setSavedQrData({
         patient_id: patientId,
         full_name: payload.full_name,
         qr_code_patient: payload.qr_code_patient,
-        medications: payload.medications,
+        cassettes,
       })
     } catch (err) {
       setError(err.message)
@@ -169,7 +174,7 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
     return (
       <PatientQrCodesScreen
         patient={savedQrData}
-        medications={savedQrData.medications}
+        cassettes={savedQrData.cassettes}
         onDone={onSaved}
         onAssignToSlot={
           !isEditing && onAssignNewPatient
@@ -268,19 +273,26 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
               onChangeText={(v) => updateMedicationField(med.key, 'instruction', v)}
               placeholder="เช่น หลังอาหาร"
             />
-            <Field
-              label="เวลาให้ยา (คั่นด้วยคอมมา)"
-              value={med.time_slot}
-              onChangeText={(v) => updateMedicationField(med.key, 'time_slot', v)}
-              placeholder="เช่น 08:00,12:00,18:00"
-            />
-            <Field
-              label="รหัส QR ตลับยา *"
-              value={med.qr_code_cassette}
-              onChangeText={(v) => updateMedicationField(med.key, 'qr_code_cassette', v)}
-              placeholder="เช่น CASSETTE-0027"
-              autoCapitalize="characters"
-            />
+            <View style={styles.field}>
+              <Text style={styles.label}>มื้อ *</Text>
+              <View style={styles.mealGrid}>
+                {MEALS.map((meal) => {
+                  const isActive = med.meal === meal
+                  return (
+                    <TouchableOpacity
+                      key={meal}
+                      style={[styles.mealPill, isActive && styles.mealPillActive]}
+                      onPress={() => updateMedicationField(med.key, 'meal', meal)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.mealPillText, isActive && styles.mealPillTextActive]}>
+                        {MEAL_LABELS[meal]}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
           </View>
         ))}
 
@@ -381,6 +393,31 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: 8,
+  },
+  mealGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  mealPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  mealPillActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
+  },
+  mealPillText: {
+    color: colors.ink,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  mealPillTextActive: {
+    color: '#FFFFFF',
   },
   label: {
     color: colors.ink,
