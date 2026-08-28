@@ -140,11 +140,14 @@ if ($backendUp) {
         Info "$ngrokV3Config not found (no saved authtoken) - off-LAN backend access unavailable this run (LAN still works)."
     } else {
         # No --web-addr flag exists in this ngrok version to pin its local
-        # inspection API to a fixed port - it always tries 4040 first, and
-        # since Metro's own (older, separate) ngrok agent below already owns
-        # 4040, this one prints a warning and falls back to 4041. Confirmed
-        # via its own log output rather than assumed, in case a future ngrok
-        # version picks something else.
+        # inspection API to a fixed port - it always tries 4040 first, same
+        # as Metro's own (older, separate) ngrok agent started later in this
+        # script. Whichever of the two processes launches first wins 4040;
+        # the other falls back to 4041+. Read the ACTUAL bound port from this
+        # agent's own log rather than assuming either 4040 or 4041 - and see
+        # the matching comment in the Metro section below for why this
+        # mattered in practice, not just in theory (a real run returned the
+        # wrong tunnel's URL here).
         Start-Process -FilePath $ngrokV3Exe `
             -ArgumentList "http", "${lanIp}:8000", "--config", $ngrokV3Config, "--log=stdout" `
             -RedirectStandardOutput $backendNgrokLog -WindowStyle Hidden
@@ -163,7 +166,10 @@ if ($backendUp) {
         while ((Get-Date) -lt $deadline) {
             try {
                 $tunnels = Invoke-RestMethod -Uri "http://127.0.0.1:${webApiPort}/api/tunnels" -TimeoutSec 3 -ErrorAction Stop
-                $httpsTunnel = $tunnels.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1
+                # Extra safety net even with the right port: only accept a
+                # tunnel whose local target is actually this backend's own
+                # port (8000), never anything else that might be listed.
+                $httpsTunnel = $tunnels.tunnels | Where-Object { $_.proto -eq 'https' -and $_.config.addr -match ':8000$' } | Select-Object -First 1
                 if ($httpsTunnel) { $rawTunnelUrl = $httpsTunnel.public_url; break }
             } catch {}
             Start-Sleep -Seconds 1
@@ -227,21 +233,44 @@ while ((Get-Date) -lt $deadline) {
 if ($metroUp) { Ok "ready on LAN at http://${lanIp}:8081" } else { Bad "did not come up within 90s - check $metroLog" }
 
 # Ask ngrok's own local API for the public URL it assigned (more reliable
-# than grepping Metro's log - the log doesn't always contain the printed URL
-# text when output is redirected instead of an interactive terminal).
+# than grepping Metro's log for the printed URL text, which isn't always
+# present when output is redirected instead of an interactive terminal).
+#
+# IMPORTANT: do NOT hardcode port 4040 here. Two separate ngrok agents are
+# running by this point (this one for Metro, plus the backend's own v3 agent
+# started earlier in this script) - both default to trying 4040 first, so
+# whichever one launched first wins it and the other falls back to 4041+.
+# Confirmed the hard way: on a run where the backend agent happened to grab
+# 4040, hardcoding 4040 here silently returned the BACKEND's tunnel URL
+# instead of Metro's, so "QR #2" pointed a scanning phone at the Laravel
+# server instead of the app bundle. Parse Metro's own log for the port ITS
+# agent actually bound, exactly like the backend section already does for
+# its own agent, and query that port specifically.
 $expoTunnelUrl = $null
 if ($metroUp) {
+    # Can't parse Metro's own log for its ngrok agent's bound port the way
+    # the backend section does - `expo start --tunnel` runs ngrok as an
+    # internal child process and only ever prints its own higher-level
+    # "Tunnel connected"/"Tunnel ready" status lines, never ngrok's raw
+    # "starting web service ... addr=" log line, into $metroLog. Confirmed
+    # by inspecting the actual log content on a real run - it just isn't
+    # there to find. So probe a handful of candidate ports directly instead
+    # and check each one's /api/tunnels for one whose target is actually
+    # Metro's port (8081) - covers the same "which agent grabbed 4040 first"
+    # race the backend section resolves by reading its own log.
     $deadline = (Get-Date).AddSeconds(30)
-    while ((Get-Date) -lt $deadline) {
-        try {
-            $tunnels = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -TimeoutSec 3 -ErrorAction Stop
-            $httpsTunnel = $tunnels.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -First 1
-            if ($httpsTunnel) {
-                $expoTunnelUrl = $httpsTunnel.public_url -replace '^https://', 'exp://'
-                break
-            }
-        } catch {}
-        Start-Sleep -Seconds 1
+    while ((Get-Date) -lt $deadline -and -not $expoTunnelUrl) {
+        foreach ($candidatePort in 4040, 4041, 4042, 4043, 4044) {
+            try {
+                $tunnels = Invoke-RestMethod -Uri "http://127.0.0.1:${candidatePort}/api/tunnels" -TimeoutSec 2 -ErrorAction Stop
+                $httpsTunnel = $tunnels.tunnels | Where-Object { $_.proto -eq 'https' -and $_.config.addr -match ':8081$' } | Select-Object -First 1
+                if ($httpsTunnel) {
+                    $expoTunnelUrl = $httpsTunnel.public_url -replace '^https://', 'exp://'
+                    break
+                }
+            } catch {}
+        }
+        if (-not $expoTunnelUrl) { Start-Sleep -Seconds 1 }
     }
     if ($expoTunnelUrl) {
         Ok "also reachable from any network at $expoTunnelUrl"
