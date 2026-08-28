@@ -113,6 +113,12 @@ async function apiFetchJson(path, options, { retryable = false, fallback = {}, f
     err.kind = 'server'
     err.status = res.status
     err.serverState = data.server_state
+    // Carried through for the medicine-catalog delete flow's "in use, needs a
+    // second confirmation" 409 - the message itself already has the count
+    // baked into its Thai text, this is just for callers that want the raw
+    // number too (e.g. to decide UI, not just display text).
+    err.needsConfirmation = data.needs_confirmation
+    err.patientsUsingCount = data.patients_using_count
     throw err
   }
 
@@ -341,6 +347,18 @@ export async function createPatient(payload) {
   )
 }
 
+// Soft delete - requires a login token (same Bearer-token pattern as
+// updateNurseProfile/changeNursePassword below). If the patient currently
+// holds a cart slot, the backend clears it automatically first; nothing
+// extra to do here for that. Response: { ok: true, slot_cleared: boolean }.
+export async function deletePatient(patientId, { token }) {
+  return apiFetchJson(
+    `/patients/${patientId}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
+    { fallbackMessage: 'ไม่สามารถลบผู้ป่วยได้' }
+  )
+}
+
 export async function updatePatient(patientId, payload) {
   return apiFetchJson(
     `/patients/${patientId}`,
@@ -458,6 +476,23 @@ export async function toggleMedicineFavorite(medicineId) {
     `/medicine-catalog/${medicineId}/favorite`,
     { method: 'PUT' },
     { fallbackMessage: 'ไม่สามารถอัปเดตสถานะติดดาวได้' }
+  )
+}
+
+// Hard delete - requires a login token. Call without `force` first: if no
+// patient is currently using this drug it deletes immediately (200); if one
+// or more are, the backend refuses with 409 and a count instead of deleting
+// (err.status === 409, err.message already has the Thai count baked in,
+// err.patientsUsingCount has the raw number too) - re-call with
+// `force: true` only after the caller has confirmed that warning to actually
+// delete it anyway. Never touches any patient's own medication records
+// either way - see DELETE-PATIENT-MEDICINE-API-SPEC.md for why.
+export async function deleteMedicineCatalogEntry(medicineId, { token, force = false } = {}) {
+  const query = force ? '?force=1' : ''
+  return apiFetchJson(
+    `/medicine-catalog/${medicineId}${query}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
+    { fallbackMessage: 'ไม่สามารถลบยาออกจากคลังได้' }
   )
 }
 

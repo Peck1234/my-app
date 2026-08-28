@@ -176,7 +176,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
             onConsumedPresetAssign={() => setPendingAssignPatient(null)}
           />
         ) : activeTab === 'medicines' ? (
-          <MedicineDatabaseScreen onSubScreenChange={setMedicineSubScreenActive} />
+          <MedicineDatabaseScreen nurse={nurse} onSubScreenChange={setMedicineSubScreenActive} />
         ) : activeTab === 'stats' ? (
           <StatsDashboardScreen
             onBack={() => setActiveTab('patients')}
@@ -186,6 +186,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
           <DispenseLogScreen onBack={() => setActiveTab('stats')} />
         ) : (
           <PatientListScreen
+            nurse={nurse}
             onSelectPatient={setSelectedPatient}
             onSubScreenChange={setPatientSubScreenActive}
             onAssignNewPatient={goAssignNewPatientToSlot}

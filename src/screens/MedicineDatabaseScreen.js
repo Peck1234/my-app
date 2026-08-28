@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import ConfirmDialog from '../components/ConfirmDialog'
 import FadeInView from '../components/FadeInView'
 import MedicineAddScreen from './MedicineAddScreen'
 import MedicineImportScreen from './MedicineImportScreen'
 import MedicineAssignScreen from './MedicineAssignScreen'
-import { fetchMedicineCatalog, toggleMedicineFavorite } from '../api'
+import { deleteMedicineCatalogEntry, fetchMedicineCatalog, toggleMedicineFavorite } from '../api'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
-export default function MedicineDatabaseScreen({ onSubScreenChange }) {
+export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
   const [medicines, setMedicines] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -16,6 +17,14 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
   const [view, setView] = useState('list') // list | add | import | assign
   const [togglingId, setTogglingId] = useState(null)
   const [assigningMedicine, setAssigningMedicine] = useState(null)
+  // Step 1: plain "are you sure" for the medicine just tapped for delete.
+  const [deletingMedicine, setDeletingMedicine] = useState(null)
+  // Step 2: only set if the backend refused the step-1 call with 409 (drug is
+  // in use) - holds the exact warning message (with patient count) the
+  // backend already built, so this screen doesn't need to reconstruct it.
+  const [forceConfirm, setForceConfirm] = useState(null) // { medicine, message } | null
+  const [deleting, setDeleting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   useEffect(() => {
     onSubScreenChange?.(view !== 'list')
@@ -49,6 +58,60 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
       return a.drug_name.localeCompare(b.drug_name)
     })
   }, [medicines, query])
+
+  useEffect(() => {
+    if (!successMessage) return
+    const timer = setTimeout(() => setSuccessMessage(null), 2500)
+    return () => clearTimeout(timer)
+  }, [successMessage])
+
+  // Step 1 confirm: try the delete without force. If nobody's using the drug
+  // the backend just deletes it (200) and we're done; if someone is, it
+  // refuses with 409 instead of deleting - that response IS the signal to
+  // open the step-2 "are you sure, N patients are using this" dialog rather
+  // than an error to just display.
+  const confirmDeleteMedicine = async () => {
+    if (!deletingMedicine) return
+    const medicine = deletingMedicine
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteMedicineCatalogEntry(medicine.id, { token: nurse.token })
+      setMedicines((list) => list.filter((m) => m.id !== medicine.id))
+      setSuccessMessage(`ลบ "${medicine.drug_name}" ออกจากคลังยาแล้ว`)
+      setDeletingMedicine(null)
+    } catch (err) {
+      setDeletingMedicine(null)
+      if (err.status === 409) {
+        setForceConfirm({ medicine, message: err.message })
+      } else {
+        setError(err.message)
+      }
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // Step 2 confirm: nurse has now seen the "N patients are using this" warning
+  // and confirmed anyway - re-call with force so the backend skips the usage
+  // check and deletes for real.
+  const confirmForceDeleteMedicine = async () => {
+    if (!forceConfirm) return
+    const { medicine } = forceConfirm
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteMedicineCatalogEntry(medicine.id, { token: nurse.token, force: true })
+      setMedicines((list) => list.filter((m) => m.id !== medicine.id))
+      setSuccessMessage(`ลบ "${medicine.drug_name}" ออกจากคลังยาแล้ว`)
+      setForceConfirm(null)
+    } catch (err) {
+      setError(err.message)
+      setForceConfirm(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const handleToggleFavorite = async (medicine) => {
     setTogglingId(medicine.id)
@@ -131,6 +194,12 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
         />
       </View>
 
+      {!!successMessage && (
+        <View style={styles.successBanner}>
+          <Ionicons name="checkmark-circle" size={15} color={colors.success} />
+          <Text style={styles.successBannerText}>{successMessage}</Text>
+        </View>
+      )}
       {!!error && <Text style={styles.error}>{error}</Text>}
 
       {loading ? (
@@ -183,11 +252,39 @@ export default function MedicineDatabaseScreen({ onSubScreenChange }) {
                   </View>
                 )}
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => setDeletingMedicine(med)}
+                hitSlop={8}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.danger} />
+              </TouchableOpacity>
               <Ionicons name="chevron-forward" size={16} color={colors.muted} style={styles.chevron} />
             </View>
           ))}
         </View>
       )}
+
+      <ConfirmDialog
+        visible={!!deletingMedicine}
+        icon="trash-outline"
+        title={`ยืนยันลบยา "${deletingMedicine?.drug_name}" ออกจากคลัง?`}
+        confirmLabel="ลบยา"
+        loading={deleting}
+        onConfirm={confirmDeleteMedicine}
+        onCancel={() => setDeletingMedicine(null)}
+      />
+
+      <ConfirmDialog
+        visible={!!forceConfirm}
+        icon="alert-circle-outline"
+        title="ยานี้กำลังถูกใช้งานอยู่"
+        message={`${forceConfirm?.message || ''} (ข้อมูลยาที่ผู้ป่วยใช้อยู่แล้วจะไม่หายไป แค่ยาตัวนี้จะหาไม่เจอในคลังสำหรับเพิ่มให้ผู้ป่วยรายใหม่)`}
+        confirmLabel="ลบออกจากคลังอยู่ดี"
+        loading={deleting}
+        onConfirm={confirmForceDeleteMedicine}
+        onCancel={() => setForceConfirm(null)}
+      />
     </View>
   )
 }
@@ -249,7 +346,22 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   starButton: { paddingTop: 2 },
+  deleteButton: { alignSelf: 'center', padding: 2 },
   chevron: { alignSelf: 'center' },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.successBg,
+  },
+  successBannerText: {
+    color: colors.success,
+    fontSize: 13,
+    fontWeight: '700',
+  },
   medicineInfo: { flex: 1, gap: 4 },
   medicineName: { color: colors.ink, fontSize: 14.5, fontWeight: '800' },
   metaRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 2 },

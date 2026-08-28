@@ -10,20 +10,25 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
-import { fetchPatients } from '../api'
+import { deletePatient, fetchPatients } from '../api'
 import Button from '../components/Button'
+import ConfirmDialog from '../components/ConfirmDialog'
 import FadeInView from '../components/FadeInView'
 import PatientScanScreen from './PatientScanScreen'
 import PatientFormScreen from './PatientFormScreen'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
-export default function PatientListScreen({ onSelectPatient, onSubScreenChange, onAssignNewPatient }) {
+export default function PatientListScreen({ nurse, onSelectPatient, onSubScreenChange, onAssignNewPatient }) {
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
   const [scanning, setScanning] = useState(false)
   const [formMode, setFormMode] = useState(null) // null | 'create' | patient object to edit
+  const [deletingPatient, setDeletingPatient] = useState(null) // patient pending confirmation, or null
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   useEffect(() => {
     onSubScreenChange?.(scanning || !!formMode)
@@ -42,6 +47,35 @@ export default function PatientListScreen({ onSelectPatient, onSubScreenChange, 
   useEffect(() => {
     loadPatients()
   }, [loadPatients])
+
+  useEffect(() => {
+    if (!successMessage) return
+    const timer = setTimeout(() => setSuccessMessage(null), 2500)
+    return () => clearTimeout(timer)
+  }, [successMessage])
+
+  useEffect(() => {
+    if (!deleteError) return
+    const timer = setTimeout(() => setDeleteError(null), 4000)
+    return () => clearTimeout(timer)
+  }, [deleteError])
+
+  const confirmDeletePatient = async () => {
+    if (!deletingPatient) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deletePatient(deletingPatient.patient_id, { token: nurse.token })
+      setPatients((list) => list.filter((p) => p.patient_id !== deletingPatient.patient_id))
+      setSuccessMessage(`ลบผู้ป่วย "${deletingPatient.full_name}" ออกจากระบบแล้ว`)
+      setDeletingPatient(null)
+    } catch (err) {
+      setDeleteError(err.message)
+      setDeletingPatient(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const filteredPatients = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -106,96 +140,123 @@ export default function PatientListScreen({ onSelectPatient, onSubScreenChange, 
   }
 
   return (
-    <FlatList
-      style={styles.list}
-      contentContainerStyle={styles.listContent}
-      data={filteredPatients}
-      keyExtractor={(item) => item.patient_id}
-      ListHeaderComponent={
-        <View style={styles.listHeader}>
-          <View style={styles.searchRow}>
-            <Ionicons name="search" size={16} color={colors.muted} />
-            <TextInput
-              style={styles.searchInput}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="ค้นหาชื่อ, วอร์ด, หรือเตียง"
-              placeholderTextColor={colors.muted}
-              autoCapitalize="none"
-              autoCorrect={false}
+    <>
+      <FlatList
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        data={filteredPatients}
+        keyExtractor={(item) => item.patient_id}
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            {!!successMessage && (
+              <View style={styles.successBanner}>
+                <Ionicons name="checkmark-circle" size={15} color={colors.success} />
+                <Text style={styles.successBannerText}>{successMessage}</Text>
+              </View>
+            )}
+            {!!deleteError && <Text style={styles.error}>{deleteError}</Text>}
+            <View style={styles.searchRow}>
+              <Ionicons name="search" size={16} color={colors.muted} />
+              <TextInput
+                style={styles.searchInput}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="ค้นหาชื่อ, วอร์ด, หรือเตียง"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <Button
+              label="สแกน QR ยืนยันตัวผู้ป่วย"
+              onPress={() => setScanning(true)}
+              variant="outline"
+              icon="qr-code-outline"
+              style={styles.scanButton}
+            />
+
+            <Button
+              label="เพิ่มผู้ป่วยใหม่"
+              onPress={() => setFormMode('create')}
+              variant="primary"
+              icon="person-add-outline"
+              style={styles.scanButton}
             />
           </View>
+        }
+        renderItem={({ item }) => {
+          const initial = item.full_name?.trim()?.charAt(0) || '?'
 
-          <Button
-            label="สแกน QR ยืนยันตัวผู้ป่วย"
-            onPress={() => setScanning(true)}
-            variant="outline"
-            icon="qr-code-outline"
-            style={styles.scanButton}
-          />
-
-          <Button
-            label="เพิ่มผู้ป่วยใหม่"
-            onPress={() => setFormMode('create')}
-            variant="primary"
-            icon="person-add-outline"
-            style={styles.scanButton}
-          />
-        </View>
-      }
-      renderItem={({ item }) => {
-        const initial = item.full_name?.trim()?.charAt(0) || '?'
-
-        return (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => onSelectPatient(item)}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={gradients.primary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatar}
-            >
-              <Text style={styles.avatarText}>{initial}</Text>
-            </LinearGradient>
-            <View style={styles.cardText}>
-              <Text style={styles.name}>{item.full_name}</Text>
-              <View style={styles.metaRow}>
-                {!!item.ward && (
-                  <View style={styles.wardPill}>
-                    <Ionicons name="location" size={10} color={colors.accent} />
-                    <Text style={styles.wardPillText}>{item.ward}</Text>
-                  </View>
-                )}
-                {!!item.bed_no && (
-                  <View style={styles.bedRow}>
-                    <Ionicons name="bed-outline" size={13} color={colors.muted} />
-                    <Text style={styles.meta}>เตียง {item.bed_no}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
+          return (
             <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setFormMode(item)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.card}
+              onPress={() => onSelectPatient(item)}
+              activeOpacity={0.7}
             >
-              <Ionicons name="pencil-outline" size={16} color={colors.accent} />
+              <LinearGradient
+                colors={gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatar}
+              >
+                <Text style={styles.avatarText}>{initial}</Text>
+              </LinearGradient>
+              <View style={styles.cardText}>
+                <Text style={styles.name}>{item.full_name}</Text>
+                <View style={styles.metaRow}>
+                  {!!item.ward && (
+                    <View style={styles.wardPill}>
+                      <Ionicons name="location" size={10} color={colors.accent} />
+                      <Text style={styles.wardPillText}>{item.ward}</Text>
+                    </View>
+                  )}
+                  {!!item.bed_no && (
+                    <View style={styles.bedRow}>
+                      <Ionicons name="bed-outline" size={13} color={colors.muted} />
+                      <Text style={styles.meta}>เตียง {item.bed_no}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setFormMode(item)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="pencil-outline" size={16} color={colors.accent} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => setDeletingPatient(item)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.danger} />
+              </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
             </TouchableOpacity>
-            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-          </TouchableOpacity>
-        )
-      }}
-      ListEmptyComponent={
-        <View style={styles.centerStage}>
-          <Text style={styles.meta}>
-            {query ? 'ไม่พบผู้ป่วยที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลผู้ป่วย'}
-          </Text>
-        </View>
-      }
-    />
+          )
+        }}
+        ListEmptyComponent={
+          <View style={styles.centerStage}>
+            <Text style={styles.meta}>
+              {query ? 'ไม่พบผู้ป่วยที่ตรงกับคำค้นหา' : 'ยังไม่มีข้อมูลผู้ป่วย'}
+            </Text>
+          </View>
+        }
+      />
+
+      <ConfirmDialog
+        visible={!!deletingPatient}
+        icon="trash-outline"
+        title={`ยืนยันลบผู้ป่วย "${deletingPatient?.full_name}" ออกจากระบบ?`}
+        message="ข้อมูล/ประวัติการจ่ายยาเดิมจะยังเก็บไว้ในระบบ แค่จะไม่แสดงในรายชื่อผู้ป่วยอีกต่อไป ถ้าผู้ป่วยนี้กำลังใช้ช่องยาอยู่ ช่องจะถูกเคลียร์ให้อัตโนมัติ"
+        confirmLabel="ลบผู้ป่วย"
+        loading={deleting}
+        onConfirm={confirmDeletePatient}
+        onCancel={() => setDeletingPatient(null)}
+      />
+    </>
   )
 }
 
@@ -267,6 +328,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.accentSoft,
+  },
+  deleteButton: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.dangerBg,
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.successBg,
+  },
+  successBannerText: {
+    color: colors.success,
+    fontSize: 13,
+    fontWeight: '700',
   },
   avatarText: {
     color: '#FFFFFF',
