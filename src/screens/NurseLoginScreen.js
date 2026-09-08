@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Keyboard, Pressable, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Keyboard, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -41,6 +41,7 @@ export default function NurseLoginScreen() {
       <SafeAreaView style={styles.shell}>
         <StatusBar style="dark" />
         <ResponsiveContainer style={styles.content}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <FadeInView key="forgot">
             <ForgotPasswordScreen
               onBack={() => setMode('login')}
@@ -50,6 +51,7 @@ export default function NurseLoginScreen() {
               }}
             />
           </FadeInView>
+          </ScrollView>
         </ResponsiveContainer>
       </SafeAreaView>
     )
@@ -60,6 +62,7 @@ export default function NurseLoginScreen() {
       <SafeAreaView style={styles.shell}>
         <StatusBar style="dark" />
         <ResponsiveContainer style={styles.content}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <FadeInView key="reset">
             <ResetPasswordScreen
               email={resetEmail}
@@ -70,6 +73,7 @@ export default function NurseLoginScreen() {
               }}
             />
           </FadeInView>
+          </ScrollView>
         </ResponsiveContainer>
       </SafeAreaView>
     )
@@ -90,6 +94,11 @@ export default function NurseLoginScreen() {
           works regardless of what's nested inside it. */}
       <Pressable style={styles.pressableFill} onPress={Keyboard.dismiss}>
         <ResponsiveContainer style={styles.content}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <FadeInView key={mode}>
             <View style={styles.header}>
               <LinearGradient
@@ -148,6 +157,7 @@ export default function NurseLoginScreen() {
               </Text>
             </TouchableOpacity>
           </FadeInView>
+          </ScrollView>
         </ResponsiveContainer>
       </Pressable>
     </SafeAreaView>
@@ -164,7 +174,16 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  // Core RN SafeAreaView is an iOS-only no-op on Android, so it never
+  // reserves space for the on-screen nav bar there - content (like the
+  // switchModeButton below) can render underneath and become untappable.
+  // A fixed bottom pad plus making this screen scrollable are a cheap fix
+  // that doesn't need react-native-safe-area-context and a native rebuild.
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingBottom: 48,
   },
   header: {
     marginBottom: spacing.xxl,
