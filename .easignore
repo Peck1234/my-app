@@ -1,0 +1,4 @@
+# Claude Code project tooling — irrelevant to the app bundle, and its
+# symlinked skill directories break EAS's tarball upload on Windows (EPERM).
+.agents
+.claude

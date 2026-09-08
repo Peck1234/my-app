@@ -2,6 +2,7 @@
   "expo": {
     "name": "my-app",
     "slug": "my-app",
+    "owner": "medcart-peckk",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,12 +26,27 @@
     "plugins": [
       "expo-asset",
       "expo-document-picker",
+      "expo-font",
       [
         "expo-image-picker",
         {
           "photosPermission": "แอปนี้ต้องการเข้าถึงรูปภาพเพื่อให้คุณเลือกรูปโปรไฟล์"
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "แอปนี้ต้องการเข้าถึงรูปภาพเพื่อบันทึกรหัส QR ลงในเครื่อง",
+          "savePhotosPermission": "แอปนี้ต้องการบันทึกรหัส QR ลงในคลังภาพของคุณ",
+          "isAccessMediaLocationEnabled": false
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "backendTunnelUrl": "https://fling-reappear-reshape.ngrok-free.dev",
+      "eas": {
+        "projectId": "3c3850d5-583a-4908-a232-b21fc92e70c2"
+      }
+    }
   }
 }
