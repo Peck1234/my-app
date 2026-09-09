@@ -89,9 +89,11 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
                   <Text style={styles.avatarText}>{initial}</Text>
                 </LinearGradient>
               )}
-              <View>
-                <Text style={styles.eyebrow}>{TAB_EYEBROWS[activeTab]}</Text>
-                <Text style={styles.nurseName}>พยาบาล {nurse.full_name}</Text>
+              <View style={styles.identityText}>
+                <Text style={styles.eyebrow} numberOfLines={1}>{TAB_EYEBROWS[activeTab]}</Text>
+                <Text style={styles.nurseName} numberOfLines={1} ellipsizeMode="tail">
+                  พยาบาล {nurse.full_name}
+                </Text>
               </View>
             </View>
             <View style={styles.headerActions}>
@@ -214,6 +216,10 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    // Core RN SafeAreaView doesn't reserve space for Android's on-screen
+    // nav bar (iOS-only no-op there), so content anchored to the bottom of
+    // this screen - the DispenseSummaryCard - was rendering underneath it.
+    paddingBottom: 32,
   },
   // Dropped the hard bottom border that used to be the only thing separating
   // header from content — the tab bar below is its own floating white card
@@ -231,6 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexShrink: 0,
   },
   accountButton: {
     width: 34,
@@ -323,10 +330,20 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#FFFFFF',
   },
+  // flexShrink + minWidth: 0 let this block give up width to headerActions
+  // (settings/logout) instead of pushing it past the screen edge - RN's
+  // flex default (flexShrink: 0, no minWidth cap) is why a long nurse name
+  // used to force the logout button off-screen on narrow phones.
   identity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md + 2,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  identityText: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   avatar: {
     width: 46,
