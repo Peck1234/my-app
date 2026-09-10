@@ -216,9 +216,11 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
-    // Core RN SafeAreaView doesn't reserve space for Android's on-screen
-    // nav bar (iOS-only no-op there), so content anchored to the bottom of
-    // this screen - the DispenseSummaryCard - was rendering underneath it.
+    // Core RN SafeAreaView doesn't reserve space for Android's status bar
+    // or on-screen nav bar (iOS-only no-op there), so the header used to
+    // render under the clock/battery icons at the top, and the
+    // DispenseSummaryCard rendered under the nav bar at the bottom.
+    paddingTop: 28,
     paddingBottom: 32,
   },
   // Dropped the hard bottom border that used to be the only thing separating
