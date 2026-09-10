@@ -311,7 +311,7 @@ export default function MedicineImportScreen({ existingCatalog, onImported, onCa
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md + 2, paddingBottom: 40 },
+  content: { gap: spacing.md + 2, paddingTop: 28, paddingBottom: 40 },
   title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   card: {

@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     gap: 10,
+    paddingTop: 28,
   },
   title: {
     color: colors.ink,

@@ -367,6 +367,7 @@ function Field({ label, value, onChangeText }) {
 const styles = StyleSheet.create({
   shell: {
     gap: 14,
+    paddingTop: 28,
     paddingBottom: 40,
   },
   centerStage: {

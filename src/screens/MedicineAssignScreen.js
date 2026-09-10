@@ -4,9 +4,10 @@ import { Ionicons } from '@expo/vector-icons'
 import QRCode from 'react-native-qrcode-svg'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
+import MealPicker from '../components/MealPicker'
 import { assignMedicineToMeal, fetchPatients } from '../api'
 import { downloadQrCode } from '../utils/downloadQrCode'
-import { MEALS, MEAL_LABELS } from '../constants/meals'
+import { MEAL_LABELS } from '../constants/meals'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 // Three steps: pick a patient, pick a meal, see the result. Mirrors
@@ -119,23 +120,7 @@ export default function MedicineAssignScreen({ medicine, onDone, onCancel }) {
         <Text style={styles.title}>เพิ่ม {medicine.drug_name} ให้ {selectedPatient.full_name}</Text>
         <Text style={styles.subtitle}>เลือกมื้อที่จะให้ยานี้ — ถ้าผู้ป่วยมีตลับมื้อนี้อยู่แล้ว จะเพิ่มยาเข้าตลับเดิมทันที</Text>
 
-        <View style={styles.mealGrid}>
-          {MEALS.map((meal) => {
-            const isActive = selectedMeal === meal
-            return (
-              <TouchableOpacity
-                key={meal}
-                style={[styles.mealPill, isActive && styles.mealPillActive]}
-                onPress={() => setSelectedMeal(meal)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.mealPillText, isActive && styles.mealPillTextActive]}>
-                  {MEAL_LABELS[meal]}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        <MealPicker value={selectedMeal} onChange={setSelectedMeal} />
 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -211,7 +196,7 @@ export default function MedicineAssignScreen({ medicine, onDone, onCancel }) {
 }
 
 const styles = StyleSheet.create({
-  shell: { flex: 1, gap: spacing.md + 2 },
+  shell: { flex: 1, gap: spacing.md + 2, paddingTop: 28 },
   content: { gap: spacing.md + 2 },
   title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 13.5, lineHeight: 19 },
@@ -237,14 +222,6 @@ const styles = StyleSheet.create({
   patientInfo: { flex: 1, gap: 2 },
   patientName: { color: colors.ink, fontSize: 14.5, fontWeight: '700' },
   patientMeta: { color: colors.muted, fontSize: 12.5 },
-  mealGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  mealPill: {
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2, borderRadius: radius.pill,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
-  },
-  mealPillActive: { borderColor: colors.accent, backgroundColor: colors.accent },
-  mealPillText: { color: colors.ink, fontSize: 14, fontWeight: '700' },
-  mealPillTextActive: { color: '#FFFFFF' },
   successHeader: { alignItems: 'flex-start', gap: spacing.xs },
   successIcon: {
     width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center',

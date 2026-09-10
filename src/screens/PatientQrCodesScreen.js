@@ -16,9 +16,10 @@ import { colors, gradients, radius } from '../constants/theme'
 export default function PatientQrCodesScreen({ patient, cassettes, onDone, onAssignToSlot, onOpenCassette, onCreateMeal }) {
   const patientQrRef = useRef(null)
   const cassetteQrRefs = useRef({})
-  // A patient rarely starts with all 5 meals in use - lets a nurse add the
-  // ones missing (e.g. only breakfast/dinner so far) right from this screen,
-  // instead of having to go find that meal from the medicine catalog flow.
+  // A patient rarely starts with all 9 meal slots in use - lets a nurse add
+  // the ones missing (e.g. only breakfast_after/dinner_before so far) right
+  // from this screen, instead of having to go find that meal from the
+  // medicine catalog flow.
   const missingMeals = MEALS.filter((meal) => !cassettes.some((c) => c.meal === meal))
 
   return (
@@ -144,6 +145,7 @@ export default function PatientQrCodesScreen({ patient, cassettes, onDone, onAss
 const styles = StyleSheet.create({
   content: {
     gap: 14,
+    paddingTop: 28,
     paddingBottom: 40,
   },
   header: {

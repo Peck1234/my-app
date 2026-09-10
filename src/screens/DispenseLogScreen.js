@@ -110,6 +110,7 @@ export default function DispenseLogScreen({ onBack }) {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    paddingTop: 28,
   },
   header: {
     gap: 4,

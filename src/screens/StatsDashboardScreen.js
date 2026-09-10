@@ -233,6 +233,7 @@ export default function StatsDashboardScreen({ onBack, onViewLogs }) {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    paddingTop: 28,
   },
   backLink: {
     marginBottom: 14,

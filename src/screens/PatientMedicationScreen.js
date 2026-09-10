@@ -294,6 +294,7 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    paddingTop: 28,
   },
   header: {
     gap: spacing.xs,

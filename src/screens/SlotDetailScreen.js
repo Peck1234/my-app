@@ -42,7 +42,7 @@ export default function SlotDetailScreen({ nurse, slot, onBack, onAssign, onView
       </View>
       {!!slot.slot_no && <Text style={styles.slotNo}>ตำแหน่ง {slot.slot_no}</Text>}
 
-      {isOccupied ? (
+      {isOccupied && (
         <View style={styles.card}>
           <Text style={styles.cardLabel}>ผู้ป่วยปัจจุบัน</Text>
           <Text style={styles.patientName}>{slot.current_patient.full_name}</Text>
@@ -52,9 +52,9 @@ export default function SlotDetailScreen({ nurse, slot, onBack, onAssign, onView
               .join(' · ') || 'ไม่ระบุวอร์ด/เตียง'}
           </Text>
         </View>
-      ) : (
-        <SlotQrCard slotCode={slot.slot_code} slotNo={slot.slot_no} />
       )}
+
+      <SlotQrCard slotCode={slot.slot_code} slotNo={slot.slot_no} />
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -96,7 +96,7 @@ export default function SlotDetailScreen({ nurse, slot, onBack, onAssign, onView
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 14, paddingBottom: 40 },
+  content: { gap: 14, paddingTop: 28, paddingBottom: 40 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
   slotCode: { color: colors.ink, fontSize: 22, fontWeight: '800', fontFamily: 'monospace' },
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },

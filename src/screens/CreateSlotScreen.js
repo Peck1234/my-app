@@ -115,7 +115,7 @@ export default function CreateSlotScreen({ nurse, existingSlots, onCreated, onCa
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 14, paddingBottom: 40 },
+  content: { gap: 14, paddingTop: 28, paddingBottom: 40 },
   header: { alignItems: 'flex-start', gap: 6, marginBottom: 4 },
   iconMark: {
     width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center',

@@ -258,7 +258,7 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.lg, paddingBottom: 40 },
+  content: { gap: spacing.lg, paddingTop: 28, paddingBottom: 40 },
   title: { color: colors.ink, fontSize: 22, fontWeight: '800' },
   photoSection: { alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm },
   photoWrap: { width: 96, height: 96 },

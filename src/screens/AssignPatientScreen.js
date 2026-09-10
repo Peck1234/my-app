@@ -172,7 +172,7 @@ export default function AssignPatientScreen({ nurse, slot, takenPatientIds, pres
 }
 
 const styles = StyleSheet.create({
-  shell: { flex: 1, gap: 14 },
+  shell: { flex: 1, gap: 14, paddingTop: 28 },
   title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 13.5 },
   searchBar: {

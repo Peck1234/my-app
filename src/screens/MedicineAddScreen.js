@@ -84,7 +84,11 @@ function Field({ label, value, onChangeText, placeholder }) {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 14, paddingBottom: 40 },
+  // This screen has no SafeAreaView of its own, and core RN SafeAreaView
+  // doesn't reserve space for Android's status bar anyway (iOS-only
+  // no-op there) - without paddingTop the first element (the "คลังยา"
+  // back link) rendered right under the clock/battery icons.
+  content: { gap: 14, paddingTop: 28, paddingBottom: 40 },
   title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   card: {
     gap: 14,

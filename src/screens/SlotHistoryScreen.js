@@ -80,7 +80,7 @@ export default function SlotHistoryScreen({ slot, onBack }) {
 }
 
 const styles = StyleSheet.create({
-  shell: { flex: 1, gap: 14 },
+  shell: { flex: 1, gap: 14, paddingTop: 28 },
   title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 13.5 },
   error: { color: colors.danger, fontSize: 13, textAlign: 'center' },

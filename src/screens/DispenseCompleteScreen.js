@@ -85,6 +85,7 @@ export default function DispenseCompleteScreen({ nurse, patient, medications, on
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    paddingTop: 28,
   },
   content: {
     alignItems: 'center',

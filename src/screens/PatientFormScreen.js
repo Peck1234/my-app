@@ -21,8 +21,8 @@ import {
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
 import MedicineAutocompleteField from '../components/MedicineAutocompleteField'
+import MealPicker from '../components/MealPicker'
 import PatientQrCodesScreen from './PatientQrCodesScreen'
-import { MEALS, MEAL_LABELS } from '../constants/meals'
 import { colors, radius } from '../constants/theme'
 
 function emptyMedication() {
@@ -275,23 +275,7 @@ export default function PatientFormScreen({ patient, onSaved, onCancel, onAssign
             />
             <View style={styles.field}>
               <Text style={styles.label}>มื้อ *</Text>
-              <View style={styles.mealGrid}>
-                {MEALS.map((meal) => {
-                  const isActive = med.meal === meal
-                  return (
-                    <TouchableOpacity
-                      key={meal}
-                      style={[styles.mealPill, isActive && styles.mealPillActive]}
-                      onPress={() => updateMedicationField(med.key, 'meal', meal)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.mealPillText, isActive && styles.mealPillTextActive]}>
-                        {MEAL_LABELS[meal]}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
+              <MealPicker value={med.meal} onChange={(meal) => updateMedicationField(med.key, 'meal', meal)} />
             </View>
           </View>
         ))}
@@ -341,6 +325,7 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: 14,
+    paddingTop: 28,
     paddingBottom: 40,
   },
   title: {
@@ -393,31 +378,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: 8,
-  },
-  mealGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  mealPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  mealPillActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
-  },
-  mealPillText: {
-    color: colors.ink,
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  mealPillTextActive: {
-    color: '#FFFFFF',
   },
   label: {
     color: colors.ink,
