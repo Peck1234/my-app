@@ -83,16 +83,23 @@ export async function scheduleDailyReminders(items) {
     const [hour, minute] = item.time.split(':').map(Number)
     if (Number.isNaN(hour) || Number.isNaN(minute)) continue
 
+    // SchedulableTriggerInputTypes.CALENDAR (what this used before) has no
+    // case in expo-notifications' own Android native module - every "calendar"
+    // trigger throws InvalidArgumentException("Trigger of type: calendar is
+    // not supported on Android"), silently swallowed by the .catch() this is
+    // called under. So every reminder ever "scheduled" on Android was
+    // actually rejected instantly and never reached the OS scheduler at all.
+    // DAILY takes the same hour/minute and is natively supported on both
+    // platforms (and is inherently repeating, so no `repeats` flag needed).
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'ถึงเวลาให้ยา',
         body: `${item.patient_name} (เตียง ${item.bed_no || '-'}) — ${item.drug_name} เวลา ${item.time} น.`,
       },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        repeats: true,
         channelId: Platform.OS === 'android' ? REMINDER_CHANNEL_ID : undefined,
       },
     })
