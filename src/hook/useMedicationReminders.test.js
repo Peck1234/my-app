@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { Platform } from 'react-native'
-import { fetchDueMedications, fetchReminderTimes } from '../api'
+import { fetchDueMedications, fetchReminderScheduleItems } from '../api'
 import {
   ensureNotificationPermission,
   presentDueMedicationNotification,
@@ -9,7 +9,7 @@ import { useMedicationReminders } from './useMedicationReminders'
 
 jest.mock('../api', () => ({
   fetchDueMedications: jest.fn(),
-  fetchReminderTimes: jest.fn(),
+  fetchReminderScheduleItems: jest.fn(),
 }))
 
 jest.mock('../utils/notifications', () => ({
@@ -32,7 +32,10 @@ describe('useMedicationReminders', () => {
   beforeEach(() => {
     jest.useFakeTimers()
     fetchDueMedications.mockResolvedValue([])
-    fetchReminderTimes.mockResolvedValue(['08:00', '12:00'])
+    fetchReminderScheduleItems.mockResolvedValue([
+      { order_id: 1, time: '08:00', drug_name: 'Paracetamol', patient_name: 'สมชาย ใจงาม', bed_no: '12', ward: 'A' },
+      { order_id: 1, time: '12:00', drug_name: 'Paracetamol', patient_name: 'สมชาย ใจงาม', bed_no: '12', ward: 'A' },
+    ])
     ensureNotificationPermission.mockResolvedValue(true)
   })
 
@@ -56,7 +59,7 @@ describe('useMedicationReminders', () => {
     })
 
     expect(fetchDueMedications).toHaveBeenCalledTimes(1)
-    expect(fetchReminderTimes).toHaveBeenCalledTimes(1)
+    expect(fetchReminderScheduleItems).toHaveBeenCalledTimes(1)
     expect(ensureNotificationPermission).toHaveBeenCalledTimes(1)
     await unmount()
   })
@@ -131,12 +134,12 @@ describe('useMedicationReminders', () => {
     await act(async () => {
       await Promise.resolve()
     })
-    expect(fetchReminderTimes).toHaveBeenCalledTimes(1)
+    expect(fetchReminderScheduleItems).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(10 * 60000)
     })
-    expect(fetchReminderTimes).toHaveBeenCalledTimes(2)
+    expect(fetchReminderScheduleItems).toHaveBeenCalledTimes(2)
     await unmount()
   })
 
@@ -164,7 +167,7 @@ describe('useMedicationReminders', () => {
     })
 
     expect(ensureNotificationPermission).not.toHaveBeenCalled()
-    expect(fetchReminderTimes).not.toHaveBeenCalled() // reschedule() bails out early on web
+    expect(fetchReminderScheduleItems).not.toHaveBeenCalled() // reschedule() bails out early on web
     await unmount()
   })
 

@@ -52,29 +52,41 @@ export async function presentDueMedicationNotification(item) {
   })
 }
 
-// Cancels and re-schedules one daily-repeating reminder per unique HH:MM time
-// still ahead today across the whole roster's pending medications. Safe to
-// call repeatedly — it diffs against the previously scheduled set and only
-// touches the OS scheduler when the set of times actually changed, so this
-// doesn't need to run on every 60s poll tick.
+// Cancels and re-schedules one daily-repeating reminder PER (medication,
+// dose time) still ahead today across the whole roster's pending
+// medications - each with the specific patient/drug in its content, not a
+// generic "check the app" ping. These are real OS-scheduled local
+// notifications (AlarmManager under the hood on Android), so unlike the
+// old JS-poll-loop approach they still fire while the app is closed.
+//
+// Safe to call repeatedly — it diffs against the previously scheduled set
+// and only touches the OS scheduler when the items actually changed, so
+// this doesn't need to run on every 60s poll tick.
 let lastScheduledSignature = null
 
-export async function scheduleDailyReminders(times) {
-  if (Platform.OS === 'web' || times.length === 0) return
+function itemSignature(items) {
+  return items
+    .map((item) => `${item.order_id}|${item.time}|${item.drug_name}|${item.patient_name}|${item.bed_no}`)
+    .sort()
+    .join(';')
+}
 
-  const signature = times.join(',')
+export async function scheduleDailyReminders(items) {
+  if (Platform.OS === 'web' || items.length === 0) return
+
+  const signature = itemSignature(items)
   if (signature === lastScheduledSignature) return
 
   await Notifications.cancelAllScheduledNotificationsAsync()
 
-  for (const time of times) {
-    const [hour, minute] = time.split(':').map(Number)
+  for (const item of items) {
+    const [hour, minute] = item.time.split(':').map(Number)
     if (Number.isNaN(hour) || Number.isNaN(minute)) continue
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `ถึงเวลาให้ยารอบ ${time} น.`,
-        body: 'ตรวจสอบรายการยาที่ต้องจ่ายในแอป',
+        title: 'ถึงเวลาให้ยา',
+        body: `${item.patient_name} (เตียง ${item.bed_no || '-'}) — ${item.drug_name} เวลา ${item.time} น.`,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,

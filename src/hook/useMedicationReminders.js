@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Platform } from 'react-native'
-import { fetchDueMedications, fetchReminderTimes } from '../api'
-import {
-  ensureNotificationPermission,
-  presentDueMedicationNotification,
-  scheduleDailyReminders,
-} from '../utils/notifications'
+import { fetchDueMedications, fetchReminderScheduleItems } from '../api'
+import { ensureNotificationPermission, presentDueMedicationNotification, scheduleDailyReminders } from '../utils/notifications'
 
 const POLL_INTERVAL_MS = 60000
 // Today's dose times rarely change (only when meds are added/edited), so this
@@ -54,7 +50,7 @@ export function useMedicationReminders() {
 
     const reschedule = () => {
       if (Platform.OS === 'web') return
-      fetchReminderTimes()
+      fetchReminderScheduleItems()
         .then(scheduleDailyReminders)
         .catch(() => {})
     }

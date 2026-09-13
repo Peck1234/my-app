@@ -391,6 +391,18 @@ export async function fetchReminderTimes() {
   return data.times
 }
 
+// One row per (medication, dose time) still ahead today, with patient/drug
+// detail - lets the app schedule a specific native reminder per dose
+// ("ถึงเวลาให้ยา Paracetamol คุณสมชาย เตียง 12") instead of just a bare time.
+export async function fetchReminderScheduleItems() {
+  const data = await apiFetchJson('/reminder-schedule', undefined, {
+    retryable: true,
+    fallback: { items: [] },
+    fallbackMessage: 'ไม่สามารถโหลดตารางแจ้งเตือนได้',
+  })
+  return data.items
+}
+
 export async function fetchDispenseStats() {
   return apiFetchJson('/dispense-stats', undefined, {
     retryable: true,
