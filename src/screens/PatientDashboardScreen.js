@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import FadeInView from '../components/FadeInView'
 import DispenseSummaryCard from '../components/DispenseSummaryCard'
 import DueMedicationAlert from '../components/DueMedicationAlert'
+import BackgroundReminderPrompt from '../components/BackgroundReminderPrompt'
 import PatientListScreen from './PatientListScreen'
 import PatientMedicationScreen from './PatientMedicationScreen'
 import MissedMedicationsScreen from './MissedMedicationsScreen'
@@ -209,6 +210,8 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
         }}
         onDismiss={dismissAlert}
       />
+
+      <BackgroundReminderPrompt />
     </View>
   )
 }
