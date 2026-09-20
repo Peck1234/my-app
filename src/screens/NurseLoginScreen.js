@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Keyboard, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Keyboard, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import PasswordLoginForm from '../components/PasswordLoginForm'
 import RegisterForm from '../components/RegisterForm'
@@ -13,7 +12,7 @@ import ResetPasswordScreen from './ResetPasswordScreen'
 import { appConfig } from '../config/appConfig'
 import { useNurseLogin } from '../hook/useNurseLogin'
 import { th } from '../i18n/th'
-import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
+import { colors, radius, shadow, spacing } from '../constants/theme'
 
 export default function NurseLoginScreen() {
   const { error, handlePasswordLogin, handleRegister, loading, resetLogin, session, updateSession } =
@@ -101,14 +100,7 @@ export default function NurseLoginScreen() {
           >
           <FadeInView key={mode}>
             <View style={styles.header}>
-              <LinearGradient
-                colors={gradients.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.iconMark}
-              >
-                <Ionicons name="medkit" size={30} color="#FFFFFF" />
-              </LinearGradient>
+              <Image source={require('../../assets/icon.png')} style={styles.iconMark} resizeMode="cover" />
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{appConfig.appName}</Text>
               </View>
