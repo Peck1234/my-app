@@ -1,24 +1,16 @@
-import { Platform } from 'react-native'
-import { File, Paths } from 'expo-file-system'
-import * as Sharing from 'expo-sharing'
+import { Alert, Platform } from 'react-native'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as MediaLibrary from 'expo-media-library'
 import { downloadQrCode } from './downloadQrCode'
 
-const mockFileInstance = {
-  exists: false,
-  delete: jest.fn(),
-  create: jest.fn(),
-  write: jest.fn(),
-  uri: 'file:///mock/cache/test.png',
-}
-
-jest.mock('expo-file-system', () => ({
-  File: jest.fn().mockImplementation(() => mockFileInstance),
-  Paths: { cache: '/mock/cache' },
+jest.mock('expo-file-system/legacy', () => ({
+  cacheDirectory: 'file:///mock/cache/',
+  writeAsStringAsync: jest.fn(),
 }))
 
-jest.mock('expo-sharing', () => ({
-  isAvailableAsync: jest.fn(),
-  shareAsync: jest.fn(),
+jest.mock('expo-media-library', () => ({
+  requestPermissionsAsync: jest.fn(),
+  saveToLibraryAsync: jest.fn(),
 }))
 
 function flushPromises() {
@@ -76,48 +68,55 @@ describe('downloadQrCode', () => {
   describe('on native', () => {
     beforeEach(() => {
       Platform.OS = 'ios'
-      mockFileInstance.exists = false
-      mockFileInstance.delete.mockClear()
-      mockFileInstance.create.mockClear()
-      mockFileInstance.write.mockClear()
-      File.mockClear()
-      Sharing.isAvailableAsync.mockReset()
-      Sharing.shareAsync.mockReset()
+      FileSystem.writeAsStringAsync.mockReset()
+      MediaLibrary.requestPermissionsAsync.mockReset()
+      MediaLibrary.saveToLibraryAsync.mockReset()
+      jest.spyOn(Alert, 'alert').mockImplementation(() => {})
     })
 
-    it('writes the QR image to the cache directory and shares it when sharing is available', async () => {
-      Sharing.isAvailableAsync.mockResolvedValue(true)
-      Sharing.shareAsync.mockResolvedValue(undefined)
+    afterEach(() => {
+      Alert.alert.mockRestore()
+    })
+
+    it('writes the QR image as base64 to the cache directory and saves it to the photo library when permission is granted', async () => {
+      FileSystem.writeAsStringAsync.mockResolvedValue(undefined)
+      MediaLibrary.requestPermissionsAsync.mockResolvedValue({ status: 'granted' })
+      MediaLibrary.saveToLibraryAsync.mockResolvedValue(undefined)
       const qrRef = { current: { toDataURL: (cb) => cb('BASE64DATA') } }
 
       downloadQrCode(qrRef, 'slot-0001.png')
       await flushPromises()
 
-      expect(File).toHaveBeenCalledWith(Paths.cache, 'slot-0001.png')
-      expect(mockFileInstance.create).toHaveBeenCalledTimes(1)
-      expect(mockFileInstance.write).toHaveBeenCalledWith('BASE64DATA', { encoding: 'base64' })
-      expect(Sharing.shareAsync).toHaveBeenCalledWith(mockFileInstance.uri, { mimeType: 'image/png' })
+      expect(FileSystem.writeAsStringAsync).toHaveBeenCalledWith(
+        'file:///mock/cache/slot-0001.png',
+        'BASE64DATA',
+        { encoding: 'base64' }
+      )
+      expect(MediaLibrary.saveToLibraryAsync).toHaveBeenCalledWith('file:///mock/cache/slot-0001.png')
+      expect(Alert.alert).toHaveBeenCalledWith('บันทึกรูปสำเร็จ', expect.any(String))
     })
 
-    it('deletes a pre-existing cached file with the same name before writing the new one', async () => {
-      mockFileInstance.exists = true
-      Sharing.isAvailableAsync.mockResolvedValue(false)
-      const qrRef = { current: { toDataURL: (cb) => cb('BASE64DATA') } }
-
-      downloadQrCode(qrRef, 'slot-0002.png')
-      await flushPromises()
-
-      expect(mockFileInstance.delete).toHaveBeenCalledTimes(1)
-    })
-
-    it('does not attempt to share when sharing is unavailable on the device', async () => {
-      Sharing.isAvailableAsync.mockResolvedValue(false)
+    it('does not attempt to save and warns the user when permission is denied', async () => {
+      FileSystem.writeAsStringAsync.mockResolvedValue(undefined)
+      MediaLibrary.requestPermissionsAsync.mockResolvedValue({ status: 'denied' })
       const qrRef = { current: { toDataURL: (cb) => cb('BASE64DATA') } }
 
       downloadQrCode(qrRef, 'slot-0003.png')
       await flushPromises()
 
-      expect(Sharing.shareAsync).not.toHaveBeenCalled()
+      expect(MediaLibrary.saveToLibraryAsync).not.toHaveBeenCalled()
+      expect(Alert.alert).toHaveBeenCalledWith('บันทึกรูปไม่สำเร็จ', expect.any(String))
+    })
+
+    it('shows an error alert instead of failing silently when writing the file throws', async () => {
+      FileSystem.writeAsStringAsync.mockRejectedValue(new Error('disk full'))
+      const qrRef = { current: { toDataURL: (cb) => cb('BASE64DATA') } }
+
+      downloadQrCode(qrRef, 'slot-0004.png')
+      await flushPromises()
+
+      expect(MediaLibrary.requestPermissionsAsync).not.toHaveBeenCalled()
+      expect(Alert.alert).toHaveBeenCalledWith('บันทึกรูปไม่สำเร็จ', expect.stringContaining('disk full'))
     })
   })
 })

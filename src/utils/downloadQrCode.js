@@ -1,4 +1,4 @@
-import { Platform } from 'react-native'
+import { Alert, Platform } from 'react-native'
 
 export function downloadQrCode(qrRef, filename) {
   if (!qrRef?.current) return
@@ -22,17 +22,23 @@ function downloadOnWeb(base64Data, filename) {
 }
 
 async function downloadOnNative(base64Data, filename) {
-  const { File, Paths } = await import('expo-file-system')
-  const Sharing = await import('expo-sharing')
+  try {
+    const FileSystem = await import('expo-file-system/legacy')
+    const MediaLibrary = await import('expo-media-library')
 
-  const file = new File(Paths.cache, filename)
-  if (file.exists) {
-    file.delete()
-  }
-  file.create()
-  file.write(base64Data, { encoding: 'base64' })
+    const fileUri = `${FileSystem.cacheDirectory}${filename}`
+    await FileSystem.writeAsStringAsync(fileUri, base64Data, { encoding: 'base64' })
 
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(file.uri, { mimeType: 'image/png' })
+    const { status } = await MediaLibrary.requestPermissionsAsync(true)
+    if (status !== 'granted') {
+      Alert.alert('บันทึกรูปไม่สำเร็จ', 'กรุณาอนุญาตให้แอปเข้าถึงคลังภาพในตั้งค่าเครื่อง แล้วลองอีกครั้ง')
+      return
+    }
+
+    await MediaLibrary.saveToLibraryAsync(fileUri)
+    Alert.alert('บันทึกรูปสำเร็จ', 'บันทึกรหัส QR ลงในคลังภาพของเครื่องแล้ว')
+  } catch (err) {
+    console.error('downloadQrCode failed:', err)
+    Alert.alert('บันทึกรูปไม่สำเร็จ', `เกิดข้อผิดพลาดขณะบันทึกรูป: ${err?.message || 'ไม่ทราบสาเหตุ'}`)
   }
 }

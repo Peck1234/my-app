@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { CameraView } from 'expo-camera'
-import { CAMERA_FACING, QR_BARCODE_TYPES } from '../constants/camera'
+import { CAMERA_FACING, CAMERA_QR_ZOOM, QR_BARCODE_TYPES } from '../constants/camera'
 import { colors, radius } from '../constants/theme'
 import { th } from '../i18n/th'
 
@@ -13,6 +13,7 @@ export default function QrScanView({ error, loading, onBarcodeScanned }) {
         <CameraView
           style={styles.camera}
           facing={CAMERA_FACING}
+          zoom={CAMERA_QR_ZOOM}
           barcodeScannerSettings={{ barcodeTypes: QR_BARCODE_TYPES }}
           onBarcodeScanned={loading ? undefined : onBarcodeScanned}
         />

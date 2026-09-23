@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Keyboard,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -106,7 +107,11 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    /* Web-only: Keyboard.dismiss() is shimmed on react-native-web as "blur
+       the focused element", and a web click on a nested TextInput still
+       bubbles up here, so wiring this on web blurred every field the
+       instant it was clicked. No real keyboard to dismiss on web anyway. */
+    <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss} accessible={false}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <LinkButton label="กลับ" onPress={onBack} />
 

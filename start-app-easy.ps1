@@ -18,13 +18,33 @@
 # deliberately avoid tunnels, because the free trycloudflare.com/ngrok tunnels
 # used to die on their own mid-session. That's still true for Cloudflare's
 # free quick tunnels (which is why the backend tunnel here is best-effort,
-# not required for the script to report ready) - but the Expo/Metro tunnel
-# failure that made tunneling look broken back then was actually a different,
-# permanent bug: the ngrok binary Expo bundles (v2.3.41) has no working
-# server-side backend anymore. That's fixed here by authenticating it with a
-# free ngrok account's authtoken (`ngrok authtoken <token>`, already saved to
-# this machine's ngrok config) - without that token, the tunnel step below
-# will fail cleanly and the script still reports LAN as ready.
+# not required for the script to report ready).
+#
+# 2026-08-31: chased Metro's occasional tunnel flakiness (random
+# ERR_NGROK_3200 / timeouts mid-session) down two wrong turns before finding
+# the real shape of it - leaving this note so it isn't re-chased the same way:
+#   1. First guess: Metro's --tunnel shares this machine's own ngrok account
+#      with the backend's ngrok-v3 tunnel below (~/.ngrok2/ngrok.yml happened
+#      to hold the same authtoken), and a free account only allows one online
+#      endpoint at a time - so they'd race for it. Wrong: read @expo/cli's
+#      actual source (AsyncNgrok.js) and it hardcodes ITS OWN Expo-owned
+#      ngrok authtoken for every Expo Go user's tunnel (the exp.direct
+#      domain) - it never reads ~/.ngrok2/ngrok.yml at all. That file editing
+#      accomplished nothing.
+#   2. Second attempt, having ruled out the account theory: gave Metro a
+#      wholly separate self-managed ngrok-v3 tunnel (own account, own
+#      process) instead of --tunnel. This broke the app outright with
+#      ERR_NGROK_3004 - Metro's manifest builder stamps its own local port
+#      (:8081) onto the public bundle URL unless Expo's internal tunnel
+#      plumbing (bundlerInfo.getTunnelUrl(), populated ONLY by --tunnel
+#      itself) supplied the hostname. An externally-run tunnel Expo doesn't
+#      know about can't produce a working bundle URL - Expo Go got
+#      ERR_NGROK_3004 trying to fetch it.
+# Conclusion: --tunnel has to stay as Expo's own hosted relay; its
+# reliability is bounded by that shared, free, Expo-run service, not by
+# anything configurable from this machine. Treat it exactly like the
+# backend's Cloudflare fallback above - best-effort, LAN is still the
+# fast/reliable default when both devices share a network.
 #
 # Run this every time after restarting the computer. Nothing here persists
 # across a reboot (MySQL/backend/Metro/tunnels are all plain processes).
@@ -217,7 +237,7 @@ $metroLog = "$PSScriptRoot\.metro-easy.log"
 $metroErrLog = "$PSScriptRoot\.metro-easy-err.log"
 Remove-Item $metroLog, $metroErrLog -ErrorAction SilentlyContinue
 Start-Process -FilePath "$PSScriptRoot\node_modules\.bin\expo.cmd" `
-    -ArgumentList "start", "--port", "8081", "--tunnel" `
+    -ArgumentList "start", "--port", "8081" `
     -WorkingDirectory "C:\my-app" `
     -RedirectStandardOutput $metroLog -RedirectStandardError $metroErrLog -WindowStyle Hidden
 
@@ -232,53 +252,25 @@ while ((Get-Date) -lt $deadline) {
 }
 if ($metroUp) { Ok "ready on LAN at http://${lanIp}:8081" } else { Bad "did not come up within 90s - check $metroLog" }
 
-# Ask ngrok's own local API for the public URL it assigned (more reliable
-# than grepping Metro's log for the printed URL text, which isn't always
-# present when output is redirected instead of an interactive terminal).
-#
-# IMPORTANT: do NOT hardcode port 4040 here. Two separate ngrok agents are
-# running by this point (this one for Metro, plus the backend's own v3 agent
-# started earlier in this script) - both default to trying 4040 first, so
-# whichever one launched first wins it and the other falls back to 4041+.
-# Confirmed the hard way: on a run where the backend agent happened to grab
-# 4040, hardcoding 4040 here silently returned the BACKEND's tunnel URL
-# instead of Metro's, so "QR #2" pointed a scanning phone at the Laravel
-# server instead of the app bundle. Parse Metro's own log for the port ITS
-# agent actually bound, exactly like the backend section already does for
-# its own agent, and query that port specifically.
+# 2026-08-31: dropped `--tunnel` for Metro entirely (was here, alongside a
+# port-probing block to read the assigned ngrok URL - see prior git history
+# if that's ever needed again). Root cause traced all the way through this
+# time: when Expo's own free hosted tunnel relay fails to connect, @expo/cli
+# doesn't just skip the tunnel and keep serving LAN - it throws
+# "CommandError: failed to start tunnel" / "session closed" and the WHOLE
+# Metro process exits, taking LAN access down with it. Confirmed live: the
+# script's own health check passed (Metro genuinely up, LAN URL handed out),
+# then Metro died on its own moments later once the tunnel attempt failed -
+# a phone that grabbed the LAN URL seconds earlier still lost the app.
+# That's a worse failure mode than "no off-LAN access this run" (the
+# previous assumption): it can take down the ONE access path that had
+# nothing to do with any tunnel at all. Since Expo's tunnel reliability isn't
+# fixable from this machine (see the file header), the only way to stop it
+# from being able to kill LAN access too is to not ask for it in the first
+# place. Off-LAN mobile access is not available from this script anymore -
+# LAN (same WiFi) and the local web build (localhost:8081) are what's
+# guaranteed to stay up.
 $expoTunnelUrl = $null
-if ($metroUp) {
-    # Can't parse Metro's own log for its ngrok agent's bound port the way
-    # the backend section does - `expo start --tunnel` runs ngrok as an
-    # internal child process and only ever prints its own higher-level
-    # "Tunnel connected"/"Tunnel ready" status lines, never ngrok's raw
-    # "starting web service ... addr=" log line, into $metroLog. Confirmed
-    # by inspecting the actual log content on a real run - it just isn't
-    # there to find. So probe a handful of candidate ports directly instead
-    # and check each one's /api/tunnels for one whose target is actually
-    # Metro's port (8081) - covers the same "which agent grabbed 4040 first"
-    # race the backend section resolves by reading its own log.
-    $deadline = (Get-Date).AddSeconds(30)
-    while ((Get-Date) -lt $deadline -and -not $expoTunnelUrl) {
-        foreach ($candidatePort in 4040, 4041, 4042, 4043, 4044) {
-            try {
-                $tunnels = Invoke-RestMethod -Uri "http://127.0.0.1:${candidatePort}/api/tunnels" -TimeoutSec 2 -ErrorAction Stop
-                $httpsTunnel = $tunnels.tunnels | Where-Object { $_.proto -eq 'https' -and $_.config.addr -match ':8081$' } | Select-Object -First 1
-                if ($httpsTunnel) {
-                    $expoTunnelUrl = $httpsTunnel.public_url -replace '^https://', 'exp://'
-                    break
-                }
-            } catch {}
-        }
-        if (-not $expoTunnelUrl) { Start-Sleep -Seconds 1 }
-    }
-    if ($expoTunnelUrl) {
-        Ok "also reachable from any network at $expoTunnelUrl"
-    } else {
-        Info "Expo tunnel did not come up - off-LAN app access unavailable this run (LAN still works)."
-        Info "If this keeps happening, run: $PSScriptRoot\node_modules\@expo\ngrok-bin-win32-x64\ngrok.exe authtoken <your-free-ngrok-authtoken>"
-    }
-}
 
 # ---------------------------------------------------------------------------
 # Result
@@ -290,23 +282,20 @@ if ($mysqlUp -and $backendUp -and $dbUp -and $metroUp) {
     Write-Host "================================================================" -ForegroundColor Green
 
     Write-Host ""
-    Write-Host " 1) TRY THIS FIRST (phone must be on the same WiFi as this PC):" -ForegroundColor Green
+    Write-Host " 1) PHONE (must be on the same WiFi/hotspot as this PC right now):" -ForegroundColor Green
     Push-Location $PSScriptRoot
     node -e "require('qrcode-terminal').generate('exp://${lanIp}:8081', {small: true}, (s) => console.log(s))"
     Pop-Location
     Write-Host "   exp://${lanIp}:8081" -ForegroundColor Yellow
+    Write-Host "   (this IP changes whenever this PC switches network - rerun this script if the phone can't connect)" -ForegroundColor DarkGray
 
-    if ($expoTunnelUrl) {
-        Write-Host ""
-        Write-Host " 2) IF #1 DOESN'T LOAD (e.g. router blocks devices from reaching each other), use this instead - works on any network:" -ForegroundColor Green
-        Push-Location $PSScriptRoot
-        node -e "require('qrcode-terminal').generate('$expoTunnelUrl', {small: true}, (s) => console.log(s))"
-        Pop-Location
-        Write-Host "   $expoTunnelUrl" -ForegroundColor Yellow
-    } else {
-        Write-Host ""
-        Write-Host " (no internet fallback available this run - see FAILED/warning lines above)" -ForegroundColor Yellow
-    }
+    Write-Host ""
+    Write-Host " 2) TEST ON THIS COMPUTER ITSELF (browser, no phone needed - good for presenting):" -ForegroundColor Green
+    Write-Host "   http://localhost:8081" -ForegroundColor Yellow
+
+    Write-Host ""
+    Write-Host " No off-LAN tunnel for the app itself this run - Expo's free tunnel service turned out to be" -ForegroundColor DarkGray
+    Write-Host " unreliable enough to risk taking Metro down entirely when it fails (see start-app-easy.ps1 header)." -ForegroundColor DarkGray
 
     Write-Host ""
     Write-Host " Test login: testnurse / password123"

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import FadeInView from '../components/FadeInView'
@@ -34,6 +34,22 @@ const TAB_ICONS = {
   stats: 'bar-chart',
 }
 
+// Web-only sidebar nav - surfaces all 6 sections directly (mobile reaches
+// stats/logs indirectly, via the DispenseSummaryCard and a "ดูประวัติ" link
+// inside StatsDashboardScreen, since there's no room for a 6-item tab row on
+// a phone). A desktop sidebar has the vertical space for a flat list, so
+// there's no reason to make those two sections a click deeper than the rest.
+const NAV_ITEMS = [
+  { key: 'patients', label: 'รายชื่อผู้ป่วย', icon: 'people' },
+  { key: 'missed', label: 'ยาที่ค้างจ่าย', icon: 'alert-circle' },
+  { key: 'slots', label: 'จัดการช่องยา', icon: 'grid' },
+  { key: 'medicines', label: 'คลังยา', icon: 'medkit' },
+  { key: 'stats', label: 'สถิติการจ่ายยา', icon: 'bar-chart' },
+  { key: 'logs', label: 'ประวัติการจ่ายยา', icon: 'time' },
+]
+
+const IS_WEB = Platform.OS === 'web'
+
 export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdated }) {
   const { dueCount, alertItems, dismissAlert } = useMedicationReminders()
 
@@ -52,14 +68,143 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
     setActiveTab('slots')
   }
 
-  if (showAccountSettings) {
+  const dueMedicationAlert = (
+    <DueMedicationAlert
+      items={alertItems}
+      onViewMissed={() => {
+        dismissAlert()
+        setSelectedPatient(null)
+        setActiveTab('missed')
+      }}
+      onDismiss={dismissAlert}
+    />
+  )
+
+  const mainContent = showAccountSettings ? (
+    <AccountSettingsScreen
+      nurse={nurse}
+      onBack={() => setShowAccountSettings(false)}
+      onProfileUpdated={onProfileUpdated}
+    />
+  ) : (
+    <>
+      <FadeInView key={selectedPatient ? `patient-${selectedPatient.patient_id}` : activeTab}>
+        {selectedPatient ? (
+          <PatientMedicationScreen
+            nurse={nurse}
+            patient={selectedPatient}
+            onBack={() => setSelectedPatient(null)}
+          />
+        ) : activeTab === 'missed' ? (
+          <MissedMedicationsScreen onSelectPatient={setSelectedPatient} />
+        ) : activeTab === 'slots' ? (
+          <SlotManagementScreen
+            nurse={nurse}
+            onSubScreenChange={setSlotSubScreenActive}
+            presetAssignPatient={pendingAssignPatient}
+            onConsumedPresetAssign={() => setPendingAssignPatient(null)}
+          />
+        ) : activeTab === 'medicines' ? (
+          <MedicineDatabaseScreen nurse={nurse} onSubScreenChange={setMedicineSubScreenActive} />
+        ) : activeTab === 'stats' ? (
+          <StatsDashboardScreen
+            onBack={() => setActiveTab('patients')}
+            onViewLogs={() => setActiveTab('logs')}
+          />
+        ) : activeTab === 'logs' ? (
+          <DispenseLogScreen onBack={() => setActiveTab('stats')} />
+        ) : (
+          <PatientListScreen
+            nurse={nurse}
+            onSelectPatient={setSelectedPatient}
+            onSubScreenChange={setPatientSubScreenActive}
+            onAssignNewPatient={goAssignNewPatientToSlot}
+          />
+        )}
+      </FadeInView>
+
+      {!selectedPatient && activeTab === 'patients' && !patientSubScreenActive && (
+        <DispenseSummaryCard onPress={() => setActiveTab('stats')} />
+      )}
+    </>
+  )
+
+  // Desktop web gets a persistent sidebar instead of the mobile top
+  // header/tab-row - there's no reason a 6-section nav needs to be a click
+  // deeper on a screen with vertical space to spare, and unlike the mobile
+  // header (which has to duck out of the way for headerless sub-screens to
+  // get room), a sidebar can just stay put regardless of what's showing.
+  if (IS_WEB) {
     return (
-      <View style={styles.shell}>
-        <AccountSettingsScreen
-          nurse={nurse}
-          onBack={() => setShowAccountSettings(false)}
-          onProfileUpdated={onProfileUpdated}
-        />
+      <View style={styles.webShell}>
+        <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent}>
+          <View style={styles.sidebarIdentity}>
+            {nurse.profile_photo_url ? (
+              <Image source={{ uri: nurse.profile_photo_url }} style={styles.avatar} />
+            ) : (
+              <LinearGradient
+                colors={gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatar}
+              >
+                <Text style={styles.avatarText}>{initial}</Text>
+              </LinearGradient>
+            )}
+            <View style={styles.identityText}>
+              <Text style={styles.sidebarNurseName} numberOfLines={1} ellipsizeMode="tail">
+                พยาบาล {nurse.full_name}
+              </Text>
+              <TouchableOpacity onPress={() => setShowAccountSettings(true)} activeOpacity={0.7}>
+                <Text style={styles.sidebarAccountLink}>ตั้งค่าบัญชี</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.sidebarNav}>
+            {NAV_ITEMS.map((item) => {
+              const isActive = !showAccountSettings && !selectedPatient && activeTab === item.key
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[styles.navItem, isActive && styles.navItemActive]}
+                  onPress={() => {
+                    setShowAccountSettings(false)
+                    setSelectedPatient(null)
+                    setActiveTab(item.key)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={18}
+                    color={isActive ? '#FFFFFF' : colors.muted}
+                  />
+                  <Text style={[styles.navItemText, isActive && styles.navItemTextActive]}>
+                    {item.label}
+                  </Text>
+                  {item.key === 'missed' && !!dueCount && (
+                    <View style={styles.navBadge}>
+                      <Text style={styles.tabBadgeText}>{dueCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          <TouchableOpacity style={styles.sidebarLogout} onPress={onLogout} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={16} color={colors.danger} />
+            <Text style={styles.logoutButtonText}>ออกจากระบบ</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <ScrollView style={styles.webMain} contentContainerStyle={styles.webMainContent}>
+          <View style={styles.webMainInner}>{mainContent}</View>
+        </ScrollView>
+
+        {dueMedicationAlert}
+        <BackgroundReminderPrompt />
       </View>
     )
   }
@@ -71,6 +216,10 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
     !(activeTab === 'patients' && patientSubScreenActive) &&
     !(activeTab === 'slots' && slotSubScreenActive) &&
     !(activeTab === 'medicines' && medicineSubScreenActive)
+
+  if (showAccountSettings) {
+    return <View style={styles.shell}>{mainContent}</View>
+  }
 
   return (
     <View style={styles.shell}>
@@ -162,54 +311,9 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
         </View>
       )}
 
-      <FadeInView key={selectedPatient ? `patient-${selectedPatient.patient_id}` : activeTab}>
-        {selectedPatient ? (
-          <PatientMedicationScreen
-            nurse={nurse}
-            patient={selectedPatient}
-            onBack={() => setSelectedPatient(null)}
-          />
-        ) : activeTab === 'missed' ? (
-          <MissedMedicationsScreen onSelectPatient={setSelectedPatient} />
-        ) : activeTab === 'slots' ? (
-          <SlotManagementScreen
-            nurse={nurse}
-            onSubScreenChange={setSlotSubScreenActive}
-            presetAssignPatient={pendingAssignPatient}
-            onConsumedPresetAssign={() => setPendingAssignPatient(null)}
-          />
-        ) : activeTab === 'medicines' ? (
-          <MedicineDatabaseScreen nurse={nurse} onSubScreenChange={setMedicineSubScreenActive} />
-        ) : activeTab === 'stats' ? (
-          <StatsDashboardScreen
-            onBack={() => setActiveTab('patients')}
-            onViewLogs={() => setActiveTab('logs')}
-          />
-        ) : activeTab === 'logs' ? (
-          <DispenseLogScreen onBack={() => setActiveTab('stats')} />
-        ) : (
-          <PatientListScreen
-            nurse={nurse}
-            onSelectPatient={setSelectedPatient}
-            onSubScreenChange={setPatientSubScreenActive}
-            onAssignNewPatient={goAssignNewPatientToSlot}
-          />
-        )}
-      </FadeInView>
+      {mainContent}
 
-      {!selectedPatient && activeTab === 'patients' && !patientSubScreenActive && (
-        <DispenseSummaryCard onPress={() => setActiveTab('stats')} />
-      )}
-
-      <DueMedicationAlert
-        items={alertItems}
-        onViewMissed={() => {
-          dismissAlert()
-          setSelectedPatient(null)
-          setActiveTab('missed')
-        }}
-        onDismiss={dismissAlert}
-      />
+      {dueMedicationAlert}
 
       <BackgroundReminderPrompt />
     </View>
@@ -376,5 +480,114 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     marginTop: 2,
+  },
+
+  // --- Web-only desktop sidebar shell ---
+  webShell: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: colors.bg,
+    // Fixed (not min) height - this pins the shell to the browser window so
+    // the sidebar and main pane below can each scroll independently inside
+    // it. With minHeight the shell itself grew past the viewport instead,
+    // and nothing in the tree had an actual scrollbar to catch the overflow
+    // - the page (and every screen inside it) was just clipped at 100vh with
+    // no way to reach content or the logout button below the fold.
+    height: '100vh',
+  },
+  sidebar: {
+    width: 260,
+    // ScrollView defaults to flexGrow: 1 internally (so its content can fill
+    // whatever space it's given) - left as-is, that made the sidebar grow
+    // past its 260px width to soak up the row's leftover space alongside
+    // webMain's own flex: 1. Pinning both flexGrow and flexShrink to 0 keeps
+    // width: 260 as a hard size instead of just a starting point.
+    flexGrow: 0,
+    flexShrink: 0,
+    backgroundColor: colors.surface,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  sidebarContent: {
+    flexGrow: 1,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.xl,
+  },
+  sidebarIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  sidebarNurseName: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sidebarAccountLink: {
+    color: colors.accent,
+    fontSize: 12.5,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  sidebarNav: {
+    gap: spacing.xs + 2,
+    flex: 1,
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm + 2,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  navItemActive: {
+    backgroundColor: colors.accent,
+  },
+  navItemText: {
+    color: colors.muted,
+    fontSize: 14.5,
+    fontWeight: '700',
+    flex: 1,
+  },
+  navItemTextActive: {
+    color: '#FFFFFF',
+  },
+  navBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.highlight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sidebarLogout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs + 2,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  webMain: {
+    flex: 1,
+  },
+  webMainContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.xxl,
+  },
+  // Capped, not full-bleed - forms and detail views (single-column by
+  // design) would stretch into awkwardly long input rows on a wide monitor
+  // otherwise. 1100px reads as a real desktop app pane without turning every
+  // screen into a redesign exercise for the content living inside it.
+  webMainInner: {
+    width: '100%',
+    maxWidth: 1100,
   },
 })

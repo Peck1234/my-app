@@ -1,7 +1,12 @@
 import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 
-// เว็บ (browser): ใช้ path สัมพัทธ์ล้วน — metro.config.js พร็อกซี่ /api/* ไปที่ backend ให้แล้ว
+// เว็บ (browser): ปกติใช้ path สัมพัทธ์ล้วน — metro.config.js พร็อกซี่ /api/* ไปที่ backend ให้แล้ว
+// (ใช้ตอนรัน `expo start --web` เท่านั้น) แต่พร็อกซีนั้นมีอยู่แค่ตอน dev server รันอยู่ — เว็บ static
+// export ที่ deploy ขึ้นโฮสต์จริง (เช่น Netlify) ไม่มี dev server ให้พร็อกซี่แล้ว จึงต้องมี
+// EXPO_PUBLIC_API_BASE_URL (baked เข้า bundle ตอน build ด้วย `npx expo export`) ชี้ตรงไปที่ backend
+// จริงแบบ absolute URL แทน — CORS ฝั่ง backend เปิดกว้างอยู่แล้ว (allowed_origins: ['*']) จึงเรียกข้าม
+// origin ได้ตรงๆ โดยไม่ต้องพร็อกซี่
 //
 // แอป native (Expo Go): ไม่มี "origin" ของหน้าเว็บให้อ้างอิง path สัมพัทธ์ใช้ไม่ได้เลย ต้องชี้ URL เต็ม
 // ลำดับความสำคัญ:
@@ -27,8 +32,10 @@ const rawTunnelUrl = Constants.expoConfig?.extra?.backendTunnelUrl
 const BACKEND_TUNNEL_URL = typeof rawTunnelUrl === 'string' && rawTunnelUrl.length > 0 ? rawTunnelUrl : null
 const LAN_BACKEND_HOST = detectLanBackendHost()
 
+const WEB_API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || '/api'
+
 const API_BASE = Platform.OS === 'web'
-  ? '/api'
+  ? WEB_API_BASE_URL
   : BACKEND_TUNNEL_URL
     ? `${BACKEND_TUNNEL_URL}/api`
     : `http://${LAN_BACKEND_HOST}:8000/api`

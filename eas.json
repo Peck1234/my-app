@@ -8,7 +8,10 @@
       "android": {
         "buildType": "apk"
       },
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "BACKEND_TUNNEL_URL": "https://backend-production-c3dd.up.railway.app"
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
+import { Keyboard, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
@@ -27,7 +27,11 @@ export default function ForgotPasswordScreen({ onBack, onCodeSent }) {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    /* Web-only: Keyboard.dismiss() is shimmed on react-native-web as "blur
+       the focused element", and a web click on a nested TextInput still
+       bubbles up here, so wiring this on web blurred every field the
+       instant it was clicked. No real keyboard to dismiss on web anyway. */
+    <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss} accessible={false}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <LinkButton label="เข้าสู่ระบบ" onPress={onBack} />
 

@@ -53,7 +53,7 @@
 | ไฟล์ | Test case | สิ่งที่ทดสอบ |
 |---|---|---|
 | `qr.test.js` | 6 | ตัด whitespace, ค่า non-string (`undefined`/`null`/number), ค่าว่างล้วน |
-| `downloadQrCode.test.js` | 8 | เว็บ: สร้าง `<a>` link ดาวน์โหลดถูกต้อง / native: เขียนไฟล์ผ่าน `expo-file-system`, ลบไฟล์เดิมก่อนถ้ามี, แชร์ผ่าน `expo-sharing` เมื่อใช้งานได้ และไม่แชร์เมื่อใช้งานไม่ได้ (mock ครบทั้งสอง platform, ไม่มีการเขียนไฟล์จริง) |
+| `downloadQrCode.test.js` | 5 | เว็บ: สร้าง `<a>` link ดาวน์โหลดถูกต้อง / native: เขียนไฟล์ผ่าน `expo-file-system`, ลบไฟล์เดิมก่อนถ้ามี, แชร์ผ่าน `expo-sharing` เมื่อใช้งานได้ และไม่แชร์เมื่อใช้งานไม่ได้ (mock ครบทั้งสอง platform, ไม่มีการเขียนไฟล์จริง) |
 
 ### 4.3 Services — `nurseAuthService.test.js` (11 test case)
 

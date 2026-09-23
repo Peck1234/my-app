@@ -60,8 +60,23 @@ cloudflared.exe
 scripts/logs/
 
 # backend tunnel (ngrok) — downloaded binary + per-machine authtoken config,
-# regenerated/re-authenticated fresh per machine (see start-app-easy.ps1)
+# regenerated/re-authenticated fresh per machine (see start-app-easy.ps1).
+# Metro's own tunnel (expo start --tunnel) authenticates via a SEPARATE free
+# ngrok account through the global ~/.ngrok2/ngrok.yml instead - not tracked
+# in this repo at all, so nothing to ignore here for that one. Two separate
+# accounts on purpose: a free ngrok account allows only one online endpoint
+# at a time, so backend and Metro each need their own.
 ngrok-v3/
 .ngrok-v3-config.yml
 .backend-ngrok.log
 .backend-ngrok-v3.log
+
+# Local Netlify folder
+.netlify
+
+# ngrok log (Metro tunnel)
+.metro-ngrok.log
+
+# Built APK artifacts - regenerate via `eas build:list`, not source, too
+# large to belong in git history
+*.apk

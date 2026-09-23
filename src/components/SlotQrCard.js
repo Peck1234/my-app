@@ -66,7 +66,7 @@ export default function SlotQrCard({ slotCode, slotNo }) {
           activeOpacity={0.7}
         >
           <Ionicons name="download-outline" size={14} color={colors.accent} />
-          <Text style={styles.actionButtonText}>บันทึกรูป</Text>
+          <Text style={styles.actionButtonText}>ดาวน์โหลด</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} onPress={handlePrint} disabled={printing} activeOpacity={0.7}>
           <Ionicons name="print-outline" size={14} color={colors.accent} />

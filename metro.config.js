@@ -1,6 +1,7 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config')
 const http = require('http')
+const https = require('https')
 const os = require('os')
 
 const config = getDefaultConfig(__dirname)
@@ -25,15 +26,27 @@ function detectLanIp() {
   return '127.0.0.1'
 }
 
-const BACKEND_HOST = detectLanIp()
-const BACKEND_PORT = 8000
+// WEB_BACKEND_URL lets `npm run web` point straight at the real deployed
+// backend (e.g. Railway) instead of a local `php artisan serve` - handy for
+// one-off admin data entry through the web UI against production data
+// without needing a local PHP server or a phone. Unset by default so normal
+// local dev behavior (proxy to this machine's own backend on port 8000)
+// doesn't change.
+const WEB_BACKEND_URL = process.env.WEB_BACKEND_URL ? new URL(process.env.WEB_BACKEND_URL) : null
+
+const BACKEND_PROTOCOL = WEB_BACKEND_URL ? WEB_BACKEND_URL.protocol : 'http:'
+const BACKEND_HOST = WEB_BACKEND_URL ? WEB_BACKEND_URL.hostname : detectLanIp()
+const BACKEND_PORT = WEB_BACKEND_URL
+  ? WEB_BACKEND_URL.port || (BACKEND_PROTOCOL === 'https:' ? 443 : 80)
+  : 8000
 
 config.server = {
   ...config.server,
   enhanceMiddleware: (metroMiddleware) => {
     return (req, res, next) => {
       if (req.url && req.url.startsWith('/api')) {
-        const proxyReq = http.request(
+        const client = BACKEND_PROTOCOL === 'https:' ? https : http
+        const proxyReq = client.request(
           {
             host: BACKEND_HOST,
             port: BACKEND_PORT,

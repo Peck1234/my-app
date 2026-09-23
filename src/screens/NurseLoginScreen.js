@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Keyboard, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Keyboard, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import PasswordLoginForm from '../components/PasswordLoginForm'
@@ -23,14 +23,19 @@ export default function NurseLoginScreen() {
   const [resetNotice, setResetNotice] = useState(null)
 
   if (session) {
+    // Web builds its own full-width sidebar shell inside PatientDashboardScreen
+    // - ResponsiveContainer's mobile-app-width cap would just fight it, so skip
+    // that wrapper there and let the dashboard manage its own layout.
+    const dashboard = (
+      <FadeInView key="dashboard">
+        <PatientDashboardScreen nurse={session} onLogout={resetLogin} onProfileUpdated={updateSession} />
+      </FadeInView>
+    )
+
     return (
       <SafeAreaView style={styles.shell}>
         <StatusBar style="dark" />
-        <ResponsiveContainer>
-          <FadeInView key="dashboard">
-            <PatientDashboardScreen nurse={session} onLogout={resetLogin} onProfileUpdated={updateSession} />
-          </FadeInView>
-        </ResponsiveContainer>
+        {Platform.OS === 'web' ? dashboard : <ResponsiveContainer>{dashboard}</ResponsiveContainer>}
       </SafeAreaView>
     )
   }
@@ -90,8 +95,16 @@ export default function NurseLoginScreen() {
           ResponsiveContainer only reads `children`/`style` and drops any
           other props, so those handlers never reached a real View and taps
           silently did nothing. Pressable owns its own View instead, so this
-          works regardless of what's nested inside it. */}
-      <Pressable style={styles.pressableFill} onPress={Keyboard.dismiss}>
+          works regardless of what's nested inside it.
+
+          Web-only bug this caused: react-native-web's Keyboard.dismiss()
+          shims "hide the keyboard" as "blur the focused element" (there's no
+          real on-screen keyboard to hide on web), and unlike native, a web
+          click on a nested TextInput still bubbles up to this Pressable's
+          onClick - so focusing a field fired this handler right after,
+          immediately blurring the field you just clicked into. There's no
+          keyboard to dismiss on web anyway, so just skip wiring this there. */}
+      <Pressable style={styles.pressableFill} onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
         <ResponsiveContainer style={styles.content}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
