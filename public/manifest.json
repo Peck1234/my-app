@@ -1,11 +1,11 @@
 {
-  "name": "ระบบจ่ายยาพยาบาล",
-  "short_name": "จ่ายยา",
+  "name": "care URU",
+  "short_name": "care URU",
   "description": "ระบบยืนยันตัวผู้ป่วยและจ่ายยาสำหรับพยาบาล",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#1D7FE0",
+  "theme_color": "#FAFAFF",
   "background_color": "#FFFFFF",
   "icons": [
     {

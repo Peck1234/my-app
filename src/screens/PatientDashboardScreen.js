@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import FadeInView from '../components/FadeInView'
@@ -48,10 +48,15 @@ const NAV_ITEMS = [
   { key: 'logs', label: 'ประวัติการจ่ายยา', icon: 'time' },
 ]
 
-const IS_WEB = Platform.OS === 'web'
+// Below this width (phones, including the home-screen web app on iPhone) the
+// web build uses the same header + tab layout as the native app instead of
+// the desktop sidebar.
+export const DESKTOP_WEB_MIN_WIDTH = 900
 
 export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdated }) {
   const { dueCount, alertItems, dismissAlert } = useMedicationReminders()
+  const { width } = useWindowDimensions()
+  const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
 
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [activeTab, setActiveTab] = useState('patients')
@@ -134,7 +139,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
   // deeper on a screen with vertical space to spare, and unlike the mobile
   // header (which has to duck out of the way for headerless sub-screens to
   // get room), a sidebar can just stay put regardless of what's showing.
-  if (IS_WEB) {
+  if (isDesktopWeb) {
     return (
       <View style={styles.webShell}>
         <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent}>

@@ -2,10 +2,12 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { CameraView } from 'expo-camera'
 import { CAMERA_FACING, CAMERA_QR_ZOOM, QR_BARCODE_TYPES } from '../constants/camera'
 import { colors, radius } from '../constants/theme'
+import { useLatestCallback } from '../hook/useLatestCallback'
 import { th } from '../i18n/th'
 
 export default function QrScanView({ error, loading, onBarcodeScanned }) {
   const copy = th.nurseLogin
+  const handleScanned = useLatestCallback((result) => onBarcodeScanned?.(result))
 
   return (
     <View style={styles.scanStage}>
@@ -15,7 +17,7 @@ export default function QrScanView({ error, loading, onBarcodeScanned }) {
           facing={CAMERA_FACING}
           zoom={CAMERA_QR_ZOOM}
           barcodeScannerSettings={{ barcodeTypes: QR_BARCODE_TYPES }}
-          onBarcodeScanned={loading ? undefined : onBarcodeScanned}
+          onBarcodeScanned={loading || !onBarcodeScanned ? undefined : handleScanned}
         />
         <View style={styles.frameOverlay} pointerEvents="none">
           <View style={[styles.corner, styles.cornerTL]} />

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Image, Keyboard, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Keyboard, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import PasswordLoginForm from '../components/PasswordLoginForm'
 import RegisterForm from '../components/RegisterForm'
 import FadeInView from '../components/FadeInView'
 import ResponsiveContainer from '../components/ResponsiveContainer'
-import PatientDashboardScreen from './PatientDashboardScreen'
+import PatientDashboardScreen, { DESKTOP_WEB_MIN_WIDTH } from './PatientDashboardScreen'
 import ForgotPasswordScreen from './ForgotPasswordScreen'
 import ResetPasswordScreen from './ResetPasswordScreen'
 import { appConfig } from '../config/appConfig'
@@ -21,11 +21,13 @@ export default function NurseLoginScreen() {
   const [mode, setMode] = useState('login')
   const [resetEmail, setResetEmail] = useState('')
   const [resetNotice, setResetNotice] = useState(null)
+  const { width } = useWindowDimensions()
+  const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
 
   if (session) {
-    // Web builds its own full-width sidebar shell inside PatientDashboardScreen
-    // - ResponsiveContainer's mobile-app-width cap would just fight it, so skip
-    // that wrapper there and let the dashboard manage its own layout.
+    // Desktop web builds its own full-width sidebar shell inside
+    // PatientDashboardScreen - ResponsiveContainer's mobile-app-width cap
+    // would just fight it, so skip that wrapper there.
     const dashboard = (
       <FadeInView key="dashboard">
         <PatientDashboardScreen nurse={session} onLogout={resetLogin} onProfileUpdated={updateSession} />
@@ -35,7 +37,7 @@ export default function NurseLoginScreen() {
     return (
       <SafeAreaView style={styles.shell}>
         <StatusBar style="dark" />
-        {Platform.OS === 'web' ? dashboard : <ResponsiveContainer>{dashboard}</ResponsiveContainer>}
+        {isDesktopWeb ? dashboard : <ResponsiveContainer>{dashboard}</ResponsiveContainer>}
       </SafeAreaView>
     )
   }

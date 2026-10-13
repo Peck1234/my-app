@@ -88,7 +88,10 @@ async function apiFetch(path, options = {}, { retryable = false } = {}) {
     try {
       const res = await fetch(`${API_BASE}${path}`, {
         ...options,
-        headers: { Accept: 'application/json', ...options.headers },
+        // ngrok's free domains answer browser requests with an HTML warning
+        // page instead of proxying them, unless this header is present.
+        // Harmless for any other backend.
+        headers: { Accept: 'application/json', 'ngrok-skip-browser-warning': 'true', ...options.headers },
         signal: controller.signal,
       })
       clearTimeout(timer)

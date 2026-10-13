@@ -7,6 +7,7 @@ import CameraPermissionGate from '../components/CameraPermissionGate'
 import Button from '../components/Button'
 import { verifyCassette, dispenseMedications } from '../api'
 import { normalizeQrValue } from '../utils/qr'
+import { useLatestCallback } from '../hook/useLatestCallback'
 import {
   getBoxRect,
   matchesSlot,
@@ -624,7 +625,7 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
     return () => clearInterval(interval)
   }, [])
 
-  const handleBarcodeScanned = (result) => {
+  const handleBarcodeScanned = useLatestCallback((result) => {
     const data = normalizeQrValue(result?.data)
     if (!data) return
 
@@ -638,7 +639,7 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
     }
     // 2+ codes: suppress auto-processing entirely. MultiScanOverlay is now
     // showing a box over every one of them; the nurse taps to pick.
-  }
+  })
 
   const handleExit = () => {
     onDispensed()
