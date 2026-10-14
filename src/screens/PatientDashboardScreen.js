@@ -15,6 +15,7 @@ import SlotManagementScreen from './SlotManagementScreen'
 import MedicineDatabaseScreen from './MedicineDatabaseScreen'
 import AccountSettingsScreen from './AccountSettingsScreen'
 import { useMedicationReminders } from '../hook/useMedicationReminders'
+import { displayImageUri } from '../utils/mediaUrl'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
 const TAB_EYEBROWS = {
@@ -145,7 +146,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
         <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent}>
           <View style={styles.sidebarIdentity}>
             {nurse.profile_photo_url ? (
-              <Image source={{ uri: nurse.profile_photo_url }} style={styles.avatar} />
+              <Image source={{ uri: displayImageUri(nurse.profile_photo_url) }} style={styles.avatar} />
             ) : (
               <LinearGradient
                 colors={gradients.primary}
@@ -233,7 +234,7 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
           <View style={styles.headerRow}>
             <View style={styles.identity}>
               {nurse.profile_photo_url ? (
-                <Image source={{ uri: nurse.profile_photo_url }} style={styles.avatar} />
+                <Image source={{ uri: displayImageUri(nurse.profile_photo_url) }} style={styles.avatar} />
               ) : (
                 <LinearGradient
                   colors={gradients.primary}

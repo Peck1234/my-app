@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<link rel="icon" type="image/png" href="icon.png" />
+<title>คู่มือใช้งาน care URU</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+
+<style>
+  :root {
+    --bg: #FAFAFF;
+    --surface: #FFFFFF;
+    --surface-2: #F5F3FC;
+    --ink: #171325;
+    --muted: #5B5773;
+    --border: #E6E4F0;
+    --accent: #4338CA;
+    --accent-soft: #EEEDFC;
+    --secondary: #7E22CE;
+    --secondary-soft: #F6EEFE;
+    --ios: #0F766E;
+    --ios-soft: #E6F6F4;
+    --warning: #C2410C;
+    --warning-bg: #FFEDD5;
+    --warning-ink: #7C2D12;
+    --shadow-card: 0 2px 10px rgba(46, 16, 101, 0.07);
+    --shadow-raised: 0 10px 28px rgba(46, 16, 101, 0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14111F; --surface: #1C1830; --surface-2: #221D3B;
+      --ink: #F2F0FA; --muted: #B3ADD1; --border: #362F52;
+      --accent: #A5B4FC; --accent-soft: #2A2555;
+      --secondary: #E9D5FF; --secondary-soft: #33285A;
+      --ios: #5EEAD4; --ios-soft: #12302D;
+      --warning: #FB923C; --warning-bg: #3A2210; --warning-ink: #FB923C;
+      --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.35);
+      --shadow-raised: 0 14px 32px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14111F; --surface: #1C1830; --surface-2: #221D3B;
+    --ink: #F2F0FA; --muted: #B3ADD1; --border: #362F52;
+    --accent: #A5B4FC; --accent-soft: #2A2555;
+    --secondary: #E9D5FF; --secondary-soft: #33285A;
+    --ios: #5EEAD4; --ios-soft: #12302D;
+    --warning: #FB923C; --warning-bg: #3A2210; --warning-ink: #FB923C;
+    --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.35);
+    --shadow-raised: 0 14px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Noto Sans Thai', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    padding: 0 20px;
+    padding-block: 40px 64px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  h1, h2 { font-family: 'Kanit', 'Noto Sans Thai', sans-serif; text-wrap: balance; margin: 0; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+  header { display: flex; align-items: center; gap: 18px; }
+  header img { width: 56px; height: 56px; border-radius: 16px; box-shadow: var(--shadow-raised); flex-shrink: 0; }
+  header .eyebrow { font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--secondary); }
+  header h1 { font-size: 26px; font-weight: 700; margin-top: 2px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 14.5px; }
+
+  .quicklinks { display: flex; flex-wrap: wrap; gap: 14px; }
+  .quicklink {
+    flex: 1 1 260px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    padding: 20px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 10px;
+    text-decoration: none; color: inherit; transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .quicklink:hover { transform: translateY(-2px); box-shadow: var(--shadow-raised); }
+  .quicklink .icon { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .quicklink.app .icon { background: var(--accent-soft); }
+  .quicklink.web .icon { background: var(--secondary-soft); }
+  .quicklink .label { font-family: 'Kanit', sans-serif; font-weight: 600; font-size: 16px; }
+  .quicklink .sub { color: var(--muted); font-size: 13px; }
+  .quicklink .url {
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 500; padding: 8px 10px;
+    border-radius: 9px; background: var(--surface-2); color: var(--ink); word-break: break-all;
+  }
+  .quicklink .qr { align-self: center; width: 132px; height: 132px; padding: 10px; background: #FFFFFF; border: 1px solid var(--border); border-radius: 12px; }
+  .quicklink .qr svg { display: block; width: 100%; height: 100%; }
+  .quicklink .qr-hint { text-align: center; color: var(--muted); font-size: 12px; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+  .section-head { display: flex; align-items: baseline; gap: 10px; }
+  .section-head .tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--surface); background: var(--accent); padding: 3px 9px; border-radius: 999px; flex-shrink: 0;
+  }
+  section.ios .section-head .tag { background: var(--ios); }
+  section.web .section-head .tag { background: var(--secondary); }
+  .section-head h2 { font-size: 20px; font-weight: 600; }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  ol.steps li {
+    display: grid; grid-template-columns: 34px 1fr; gap: 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow-card);
+  }
+  ol.steps li .num {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent);
+    font-family: 'Kanit', sans-serif; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center;
+  }
+  section.ios ol.steps li .num { background: var(--ios-soft); color: var(--ios); }
+  section.web ol.steps li .num { background: var(--secondary-soft); color: var(--secondary); }
+  ol.steps li .body strong { display: block; font-size: 15px; margin-bottom: 2px; }
+  ol.steps li .body span { color: var(--muted); font-size: 13.5px; }
+
+  .callout { display: flex; gap: 12px; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+  .callout.warning { background: var(--warning-bg); border-color: transparent; }
+  .callout .glyph { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+  .callout strong { display: block; color: var(--ink); font-size: 14.5px; margin-bottom: 2px; }
+  .callout.warning strong { color: var(--warning-ink); }
+  .callout span { color: var(--muted); font-size: 13.5px; }
+
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow-card); }
+  details + details { margin-top: 10px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 14.5px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: '+'; font-family: 'Kanit', sans-serif; font-size: 18px; color: var(--muted); transition: transform 0.15s ease; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { margin: 10px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+
+  footer {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 16px;
+    border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px;
+  }
+  @media (max-width: 480px) {
+    ol.steps li { grid-template-columns: 28px 1fr; }
+    ol.steps li .num { width: 28px; height: 28px; font-size: 13px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .quicklink, summary::after { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img src="icon.png" alt="ไอคอนแอป care URU" />
+    <div>
+      <div class="eyebrow">คู่มือใช้งาน</div>
+      <h1>care URU</h1>
+      <p>ระบบจัดยาและแจ้งเตือนสำหรับพยาบาลประจำหอผู้ป่วย</p>
+    </div>
+  </header>
+
+  <div class="quicklinks">
+    <a class="quicklink app" href="https://drive.google.com/file/d/1uVr4dnvOIdYMI6o1BeuMgVYvr63Aa5Lw/view?usp=sharing" target="_blank" rel="noopener">
+      <div class="icon">📱</div>
+      <div class="label">ดาวน์โหลดแอป (Android)</div>
+      <div class="sub">ใช้ประจำวันบนมือถือ — สแกน QR ผู้ป่วย, จ่ายยา, รับแจ้งเตือน</div>
+      <div class="qr" id="qr-app"></div>
+      <div class="qr-hint">เปิดกล้องมือถือ Android สแกนเพื่อดาวน์โหลด</div>
+      <div class="url">drive.google.com · care-uru.apk</div>
+    </a>
+    <a class="quicklink web" href="https://care-uru.netlify.app" target="_blank" rel="noopener">
+      <div class="icon">🌐</div>
+      <div class="label">iPhone และคอมพิวเตอร์</div>
+      <div class="sub">เปิดผ่านเบราว์เซอร์ — บน iPhone เพิ่มเป็นแอปบนหน้าจอโฮมได้</div>
+      <div class="url">care-uru.netlify.app</div>
+    </a>
+  </div>
+
+  <section class="app">
+    <div class="section-head">
+      <span class="tag">ANDROID</span>
+      <h2>ติดตั้งแอปบน Android</h2>
+    </div>
+    <ol class="steps">
+      <li>
+        <div class="num">1</div>
+        <div class="body">
+          <strong>เปิดลิงก์ดาวน์โหลดจากมือถือ</strong>
+          <span>สแกน QR ด้านบน หรือกดปุ่ม "ดาวน์โหลดแอป (Android)" จะเปิดหน้า Google Drive แล้วกดปุ่มดาวน์โหลด (ลูกศรชี้ลง)</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">2</div>
+        <div class="body">
+          <strong>กด "ดาวน์โหลดต่อ" ที่หน้าคำเตือนของ Google</strong>
+          <span>ไฟล์ใหญ่เกินกว่าที่ Google จะสแกนไวรัสได้ จึงขึ้นคำเตือนทุกครั้ง เป็นเรื่องปกติ</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">3</div>
+        <div class="body">
+          <strong>อนุญาตให้ติดตั้งจากแหล่งที่ไม่รู้จัก</strong>
+          <span>เครื่องจะเตือนว่าไฟล์นี้อาจเป็นอันตราย — กด "ตั้งค่า" แล้วเปิดสวิตช์ "อนุญาตจากแหล่งนี้" (ข้อความอาจต่างกันไปตามรุ่นเครื่อง)</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">4</div>
+        <div class="body">
+          <strong>เปิดไฟล์ที่ดาวน์โหลดแล้วกดติดตั้ง</strong>
+          <span>แตะการแจ้งเตือนว่าดาวน์โหลดเสร็จ หรือเปิดโฟลเดอร์ "Downloads" แล้วแตะไฟล์ care-uru.apk ถ้ามีแอปตัวเก่าอยู่แล้ว ติดตั้งทับได้เลย</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">5</div>
+        <div class="body">
+          <strong>เปิดแอปแล้วสมัคร/เข้าสู่ระบบ</strong>
+          <span>ครั้งแรกใช้งาน กด "สมัครสมาชิก" กรอกชื่อ-นามสกุล ชื่อผู้ใช้ และรหัสผ่านของตัวเอง</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">6</div>
+        <div class="body">
+          <strong>อนุญาต "กิจกรรมพื้นหลัง" เมื่อระบบถาม</strong>
+          <span>จะมีหน้าต่างเด้งขึ้นครั้งแรกที่ล็อกอิน — กด "ไปตั้งค่า" แล้วอนุญาตตามที่แนะนำ (ดูเหตุผลด้านล่าง)</span>
+        </div>
+      </li>
+    </ol>
+    <div class="callout warning">
+      <div class="glyph">⚠️</div>
+      <div>
+        <strong>ห้ามข้ามขั้นตอนที่ 6</strong>
+        <span>มือถือบางรุ่น (Oppo, Xiaomi, Vivo และรุ่นใกล้เคียง) จะปิดแอปที่ไม่ได้เปิดค้างไว้ทิ้งเองโดยอัตโนมัติ ถ้าไม่อนุญาต "กิจกรรมพื้นหลัง" การแจ้งเตือนถึงเวลาให้ยาจะไม่ขึ้นเวลาปิดแอปอยู่</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="ios">
+    <div class="section-head">
+      <span class="tag">IPHONE</span>
+      <h2>ใช้งานบน iPhone</h2>
+    </div>
+    <ol class="steps">
+      <li>
+        <div class="num">1</div>
+        <div class="body">
+          <strong>เปิด Safari ไปที่ <span class="mono">care-uru.netlify.app</span></strong>
+          <span>ต้องเป็น Safari เท่านั้น ใช้ Chrome บน iPhone เพิ่มเป็นแอปแบบนี้ไม่ได้</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">2</div>
+        <div class="body">
+          <strong>กดปุ่มแชร์ แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"</strong>
+          <span>ปุ่มแชร์คือรูปสี่เหลี่ยมมีลูกศรชี้ขึ้นที่แถบล่าง เลื่อนลงหาเมนู แล้วกด "เพิ่ม"</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">3</div>
+        <div class="body">
+          <strong>เปิดจากไอคอน care URU บนหน้าจอโฮม</strong>
+          <span>แอปจะเปิดเต็มจอเหมือนแอปทั่วไป ครั้งแรกที่สแกน QR จะขอสิทธิ์ใช้กล้อง ให้กดอนุญาต</span>
+        </div>
+      </li>
+    </ol>
+    <div class="callout">
+      <div class="glyph">🔔</div>
+      <div>
+        <strong>บน iPhone แจ้งเตือนได้เฉพาะตอนเปิดแอปอยู่</strong>
+        <span>เวลาปิดแอปจะไม่มีแจ้งเตือนถึงเวลาให้ยา ถ้าต้องพึ่งการแจ้งเตือนในเวรจริง แนะนำให้ใช้เครื่อง Android</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="web">
+    <div class="section-head">
+      <span class="tag">คอมพิวเตอร์</span>
+      <h2>ใช้งานผ่านเว็บบนคอม</h2>
+    </div>
+    <ol class="steps">
+      <li>
+        <div class="num">1</div>
+        <div class="body">
+          <strong>เปิดเบราว์เซอร์ (Chrome, Edge ก็ได้)</strong>
+          <span>พิมพ์ <span class="mono">care-uru.netlify.app</span> ในแถบที่อยู่ด้านบน แล้วกด Enter</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">2</div>
+        <div class="body">
+          <strong>เข้าสู่ระบบด้วยบัญชีเดียวกับในแอป</strong>
+          <span>ใช้ชื่อผู้ใช้/รหัสผ่านเดียวกับในมือถือได้เลย ข้อมูลเชื่อมกันอัตโนมัติ</span>
+        </div>
+      </li>
+      <li>
+        <div class="num">3</div>
+        <div class="body">
+          <strong>ใช้สำหรับงานที่ต้องพิมพ์เยอะ</strong>
+          <span>เพิ่ม/แก้ข้อมูลผู้ป่วย, นำเข้ารายชื่อยาจากไฟล์ Excel, ดูสถิติการจ่ายยาย้อนหลัง — สะดวกกว่าพิมพ์บนจอมือถือ</span>
+        </div>
+      </li>
+    </ol>
+    <div class="callout">
+      <div class="glyph">💡</div>
+      <div>
+        <strong>เว็บบนคอมกับแอปบนมือถือใช้คู่กัน</strong>
+        <span>งานหน้างาน (สแกน QR ผู้ป่วย, จ่ายยาที่เตียง, รับแจ้งเตือน) ใช้มือถือ ส่วนงานเตรียมข้อมูลนั่งพิมพ์ที่โต๊ะ ใช้คอมสะดวกกว่า</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>คำถามที่พบบ่อย</h2>
+    </div>
+    <details>
+      <summary>เครื่องขึ้นว่า "ติดตั้งไม่ได้" หรือ "แอปนี้อาจเป็นอันตราย"</summary>
+      <p>เป็นข้อความมาตรฐานของ Android สำหรับแอปที่ไม่ได้ลงจาก Play Store ไม่ใช่แปลว่าแอปมีปัญหาจริง — กลับไปที่ขั้นตอนที่ 3 เพื่อเปิดอนุญาต "ติดตั้งจากแหล่งที่ไม่รู้จัก" ให้เบราว์เซอร์หรือแอปจัดการไฟล์ที่ใช้ดาวน์โหลด</p>
+    </details>
+    <details>
+      <summary>ลืมรหัสผ่าน ต้องทำอย่างไร</summary>
+      <p>ในหน้าล็อกอิน กด "ลืมรหัสผ่าน?" แล้วกรอกอีเมลที่ผูกกับบัญชีไว้ ระบบจะส่งรหัสยืนยัน 6 หลักไปทางอีเมล (รหัสมีอายุ 15 นาที) ถ้าไม่เห็นใน Inbox ให้ดูในโฟลเดอร์ Spam และเช็คว่าพิมพ์อีเมลถูกทุกตัว</p>
+    </details>
+    <details>
+      <summary>ถึงเวลาให้ยาแล้วแต่ไม่มีแจ้งเตือนขึ้น</summary>
+      <p>บน Android เช็ค 2 จุด: (1) อนุญาต "กิจกรรมพื้นหลัง" ตามขั้นตอนที่ 6 หรือยัง (2) เปิดแอปครั้งหนึ่งเพื่อให้ระบบตั้งเวลาแจ้งเตือนใหม่ล่าสุด บน iPhone แจ้งเตือนได้เฉพาะตอนเปิดแอปอยู่ — ถ้ายังไม่ขึ้น แจ้งผู้ดูแลระบบ</p>
+    </details>
+    <details>
+      <summary>เปิดแอปแล้วหน้าจอค้าง หรือโหลดข้อมูลไม่ขึ้น</summary>
+      <p>เช็คว่ามือถือหรือคอมต่ออินเทอร์เน็ตอยู่ บนคอมลองกด Ctrl+Shift+R เพื่อโหลดใหม่ บน iPhone ปัดปิดแอปแล้วเปิดใหม่ ถ้ายังไม่ได้ แจ้งผู้ดูแลระบบ</p>
+    </details>
+  </section>
+
+  <footer>
+    <span>care URU — คู่มือฉบับพยาบาล</span>
+    <span class="mono">อัปเดตล่าสุด 14 ต.ค. 2026</span>
+  </footer>
+
+</div>
+
+<script>
+  function renderQr(containerId, url) {
+    var qr = qrcode(0, 'M')
+    qr.addData(url)
+    qr.make()
+    document.getElementById(containerId).innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true })
+  }
+  // Same URL as the Android download card above - edit the card's href to change both.
+  renderQr('qr-app', document.querySelector('.quicklink.app').href)
+</script>
+
+</body>
+</html>

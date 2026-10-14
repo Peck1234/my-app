@@ -10,7 +10,7 @@
       },
       "distribution": "internal",
       "env": {
-        "BACKEND_TUNNEL_URL": "https://backend-production-c3dd.up.railway.app"
+        "BACKEND_TUNNEL_URL": "https://fling-reappear-reshape.ngrok-free.dev"
       }
     }
   }

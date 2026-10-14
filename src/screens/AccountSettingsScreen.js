@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
 import { uploadNurseProfilePhoto } from '../api'
+import { displayImageUri } from '../utils/mediaUrl'
 import { changeNurseOwnPassword, updateNurseProfileDetails } from '../services/nurseAuthService'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
@@ -122,7 +123,7 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
         <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8} disabled={photoUploading}>
           <View style={styles.photoWrap}>
             {nurse.profile_photo_url ? (
-              <Image source={{ uri: nurse.profile_photo_url }} style={styles.photo} />
+              <Image source={{ uri: displayImageUri(nurse.profile_photo_url) }} style={styles.photo} />
             ) : (
               <LinearGradient
                 colors={gradients.primary}

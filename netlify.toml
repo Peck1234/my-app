@@ -1,0 +1,13 @@
+# Web app deploy (`npx expo export -p web` -> dist/, then `netlify deploy --prod --dir dist --no-build`).
+
+# Backend files (nurse profile photos) for the web app, served from the web
+# app's own domain. Netlify fetches them from the backend and adds the header
+# that makes a free ngrok domain return the file instead of its browser
+# warning page - an <img> tag can't add that header itself. Used by
+# src/utils/mediaUrl.js. Update `to` if the backend moves to another domain.
+[[redirects]]
+  from = "/backend-media/*"
+  to = "https://fling-reappear-reshape.ngrok-free.dev/:splat"
+  status = 200
+  force = true
+  headers = { ngrok-skip-browser-warning = "true" }
