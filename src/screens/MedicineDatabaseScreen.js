@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import ConfirmDialog from '../components/ConfirmDialog'
 import FadeInView from '../components/FadeInView'
@@ -212,7 +212,13 @@ export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
           <Text style={styles.emptyText}>{query ? 'ไม่พบยาที่ตรงกับคำค้นหา' : 'ยังไม่มียาในคลัง'}</Text>
         </View>
       ) : (
-        <View style={styles.list}>
+        // Only the list scrolls - the header and search bar stay put above it.
+        <ScrollView
+          style={styles.listScroll}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
           {filteredMedicines.map((med) => (
             <View key={med.id} style={styles.medicineCard}>
               <TouchableOpacity
@@ -262,7 +268,7 @@ export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
               <Ionicons name="chevron-forward" size={16} color={colors.muted} style={styles.chevron} />
             </View>
           ))}
-        </View>
+        </ScrollView>
       )}
 
       <ConfirmDialog
@@ -336,6 +342,7 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, fontSize: 13, textAlign: 'center' },
   centerStage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingVertical: 40 },
   emptyText: { color: colors.muted, fontSize: 13.5, textAlign: 'center' },
+  listScroll: { flex: 1 },
   list: { gap: spacing.sm, paddingBottom: spacing.xl },
   medicineCard: {
     flexDirection: 'row',
