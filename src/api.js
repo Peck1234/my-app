@@ -294,6 +294,20 @@ export async function resetPassword({ email, code, newPassword }) {
   )
 }
 
+// Is a saved login token still accepted by the backend? 'valid' / 'invalid'
+// (rejected - log out), or 'unknown' when the server couldn't be reached, so
+// a nurse who opens the app offline isn't logged out just for being offline.
+export async function checkSessionToken(token) {
+  try {
+    const res = await apiFetch('/user', { headers: { Authorization: `Bearer ${token}` } }, { retryable: true })
+    if (res.ok) return 'valid'
+    if (res.status === 401) return 'invalid'
+    return 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+
 export async function updateNurseProfile({ token, fullName, username, email }) {
   return apiFetchJson(
     '/profile',

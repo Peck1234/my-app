@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Keyboard, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, Image, Keyboard, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import PasswordLoginForm from '../components/PasswordLoginForm'
@@ -15,7 +15,7 @@ import { th } from '../i18n/th'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 export default function NurseLoginScreen() {
-  const { error, handlePasswordLogin, handleRegister, loading, resetLogin, session, updateSession } =
+  const { error, handlePasswordLogin, handleRegister, loading, resetLogin, restoring, session, updateSession } =
     useNurseLogin()
   const copy = th.nurseLogin
   const [mode, setMode] = useState('login')
@@ -23,6 +23,15 @@ export default function NurseLoginScreen() {
   const [resetNotice, setResetNotice] = useState(null)
   const { width } = useWindowDimensions()
   const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
+
+  if (restoring) {
+    return (
+      <SafeAreaView style={[styles.shell, styles.restoring]}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={colors.accent} />
+      </SafeAreaView>
+    )
+  }
 
   if (session) {
     // Desktop web builds its own full-width sidebar shell inside
@@ -175,6 +184,10 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  restoring: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pressableFill: {
     flex: 1,

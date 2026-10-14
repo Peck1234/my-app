@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import Button from './Button'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
@@ -7,6 +8,7 @@ export default function PasswordLoginForm({ error, loading, onSubmit, onForgotPa
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [secureEntry, setSecureEntry] = useState(true)
+  const [remember, setRemember] = useState(true)
   // Per-field warnings shown when the user taps away from an empty field -
   // separate from `error` (the server/service-level message shown after an
   // actual submit attempt), so the two never fight over the same line.
@@ -28,7 +30,7 @@ export default function PasswordLoginForm({ error, loading, onSubmit, onForgotPa
 
   const handleSubmit = () => {
     if (!loading) {
-      onSubmit({ username: username.trim(), password })
+      onSubmit({ username: username.trim(), password, remember })
     }
   }
 
@@ -94,17 +96,31 @@ export default function PasswordLoginForm({ error, loading, onSubmit, onForgotPa
         {!!fieldErrors.password && <Text style={styles.fieldError}>{fieldErrors.password}</Text>}
       </View>
 
-      {!!onForgotPassword && (
-        <TouchableOpacity
-          style={styles.forgotPasswordButton}
-          onPress={onForgotPassword}
+      <View style={styles.optionsRow}>
+        <Pressable
+          style={styles.rememberRow}
+          onPress={() => setRemember((v) => !v)}
           disabled={loading}
-          activeOpacity={0.6}
-          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: remember }}
+          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
         >
-          <Text style={styles.forgotPasswordText}>ลืมรหัสผ่าน?</Text>
-        </TouchableOpacity>
-      )}
+          <Ionicons name={remember ? 'checkbox' : 'square-outline'} size={20} color={remember ? colors.accent : colors.muted} />
+          <Text style={styles.rememberText}>จดจำการเข้าสู่ระบบ</Text>
+        </Pressable>
+
+        {!!onForgotPassword && (
+          <TouchableOpacity
+            style={styles.forgotPasswordButton}
+            onPress={onForgotPassword}
+            disabled={loading}
+            activeOpacity={0.6}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          >
+            <Text style={styles.forgotPasswordText}>ลืมรหัสผ่าน?</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -183,8 +199,27 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 12,
   },
+  // Remember-me on the left, forgot-password on the right; wraps to two lines
+  // instead of squeezing on narrow phones.
+  optionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rememberText: {
+    color: colors.ink,
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
   forgotPasswordButton: {
-    alignSelf: 'flex-end',
+    marginLeft: 'auto',
   },
   forgotPasswordText: {
     color: colors.accent,
