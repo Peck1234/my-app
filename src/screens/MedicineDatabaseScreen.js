@@ -8,6 +8,7 @@ import MedicineImportScreen from './MedicineImportScreen'
 import MedicineAssignScreen from './MedicineAssignScreen'
 import { deleteMedicineCatalogEntry, fetchMedicineCatalog, toggleMedicineFavorite } from '../api'
 import { isAdmin } from '../utils/roles'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
@@ -26,6 +27,13 @@ export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
   const [forceConfirm, setForceConfirm] = useState(null) // { medicine, message } | null
   const [deleting, setDeleting] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
+
+  useAndroidBack(() => {
+    if (view === 'list') return false
+    setAssigningMedicine(null)
+    setView('list')
+    return true
+  })
 
   useEffect(() => {
     onSubScreenChange?.(view !== 'list')

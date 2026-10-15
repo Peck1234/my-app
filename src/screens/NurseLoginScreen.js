@@ -11,6 +11,7 @@ import ForgotPasswordScreen from './ForgotPasswordScreen'
 import ResetPasswordScreen from './ResetPasswordScreen'
 import { appConfig } from '../config/appConfig'
 import { useNurseLogin } from '../hook/useNurseLogin'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import { th } from '../i18n/th'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
@@ -23,6 +24,12 @@ export default function NurseLoginScreen() {
   const [resetNotice, setResetNotice] = useState(null)
   const { width } = useWindowDimensions()
   const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
+
+  useAndroidBack(() => {
+    if (session || mode === 'login') return false
+    setMode('login')
+    return true
+  })
 
   if (restoring) {
     return (

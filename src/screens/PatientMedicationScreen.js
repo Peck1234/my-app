@@ -17,6 +17,7 @@ import DispenseCompleteScreen from './DispenseCompleteScreen'
 import MedicationLocatorScreen from './MedicationLocatorScreen'
 import PatientQrCodesScreen from './PatientQrCodesScreen'
 import CassetteDetailScreen from './CassetteDetailScreen'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 function isCurrentSlot(timeSlot) {
@@ -59,6 +60,21 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
   useEffect(() => {
     loadMedications()
   }, [loadMedications])
+
+  useAndroidBack(() => {
+    if (viewingHistory) setViewingHistory(false)
+    else if (openCassetteId || creatingMeal) {
+      setOpenCassetteId(null)
+      setCreatingMeal(null)
+      openQrCodes()
+    } else if (viewingQr) setViewingQr(false)
+    else if (locating) {
+      // The AR locator has no on-screen exit, so back is how a nurse leaves it.
+      setLocating(false)
+      loadMedications()
+    } else return false
+    return true
+  })
 
   const openQrCodes = () => {
     setViewingQr(true)

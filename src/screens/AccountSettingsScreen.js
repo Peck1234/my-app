@@ -22,7 +22,9 @@ import { displayImageUri } from '../utils/mediaUrl'
 import { changeNurseOwnPassword, updateNurseProfileDetails } from '../services/nurseAuthService'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 import { isAdmin } from '../utils/roles'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import UserRolesScreen, { ROLE_LABELS } from './UserRolesScreen'
+import MealTimesScreen from './MealTimesScreen'
 
 export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated }) {
   const [fullName, setFullName] = useState(nurse.full_name || '')
@@ -76,6 +78,7 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
   const [passwordError, setPasswordError] = useState(null)
   const [passwordSaved, setPasswordSaved] = useState(false)
   const [showRoles, setShowRoles] = useState(false)
+  const [showMealTimes, setShowMealTimes] = useState(false)
 
   const handleSaveProfile = async () => {
     if (profileLoading) return
@@ -108,6 +111,17 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
     } finally {
       setPasswordLoading(false)
     }
+  }
+
+  useAndroidBack(() => {
+    if (!showRoles && !showMealTimes) return false
+    setShowRoles(false)
+    setShowMealTimes(false)
+    return true
+  })
+
+  if (showMealTimes) {
+    return <MealTimesScreen nurse={nurse} onBack={() => setShowMealTimes(false)} />
   }
 
   if (showRoles) {
@@ -275,6 +289,12 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
             onPress={() => setShowRoles(true)}
             variant="outline"
             icon="shield-checkmark-outline"
+          />
+          <Button
+            label="ตั้งเวลามื้อยา"
+            onPress={() => setShowMealTimes(true)}
+            variant="outline"
+            icon="time-outline"
           />
         </View>
       )}

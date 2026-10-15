@@ -23,21 +23,8 @@ export const MEAL_LABELS = {
   prn: 'ตามแพทย์สั่ง (PRN)',
 }
 
-// +-30min around each old single meal time (breakfast 08:00, lunch 12:00,
-// dinner 18:00, bedtime 21:00), close enough to "ก่อน/หลังอาหาร" to be
-// meaningfully different for the due-medication/reminder logic without
-// inventing a real clinical schedule.
-export const MEAL_TIMES = {
-  breakfast_before: '07:30',
-  breakfast_after: '08:30',
-  lunch_before: '11:30',
-  lunch_after: '12:30',
-  dinner_before: '17:30',
-  dinner_after: '18:30',
-  bedtime_before: '20:30',
-  bedtime_after: '21:30',
-  prn: null,
-}
+// Round times are not kept here: admins edit them ward-wide, so they come
+// from the backend (GET /meal-times, see MealTimesScreen).
 
 // UI-only grouping so meal pickers can show "main meal -> before/after" (2
 // sub-choices under one heading) instead of a flat 9-pill row. Not sent to

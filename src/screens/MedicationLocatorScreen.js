@@ -8,6 +8,7 @@ import Button from '../components/Button'
 import { verifyCassette, dispenseMedications } from '../api'
 import { normalizeQrValue } from '../utils/qr'
 import { useLatestCallback } from '../hook/useLatestCallback'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import {
   getBoxRect,
   matchesSlot,
@@ -441,6 +442,13 @@ export default function MedicationLocatorScreen({ nurse, patient, medications, o
     setVisibleCodes([])
     lastProcessedRef.current.clear()
   }
+
+  // Android back closes the checklist first (not while a dispense is saving).
+  useAndroidBack(() => {
+    if (!scannedCassette) return false
+    if (dispensingIds.size === 0) closeCassette()
+    return true
+  })
 
   const toggleChecked = (orderId) => {
     setCheckedIds((prev) => {

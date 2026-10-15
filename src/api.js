@@ -664,3 +664,32 @@ export async function deleteNurseAccount({ token, nurseId }) {
     { fallbackMessage: 'ลบบัญชีไม่สำเร็จ' }
   )
 }
+
+// The 8 fixed meal-round times: [{ meal, time, default_time }].
+export async function fetchMealTimes() {
+  return apiFetchJson('/meal-times', {}, { retryable: true, fallbackMessage: 'โหลดเวลามื้อยาไม่สำเร็จ' })
+}
+
+// Admin only: change round times ward-wide ({ breakfast_before: '07:00', ... });
+// every patient's drugs in a changed round move to the new time.
+export async function saveMealTimes({ token, times }) {
+  return apiFetchJson(
+    '/meal-times',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ times }),
+    },
+    { fallbackMessage: 'บันทึกเวลามื้อยาไม่สำเร็จ' }
+  )
+}
+
+// Revokes this device's token on the server. Best effort: logging out still
+// clears the device when offline.
+export async function logoutNurse(token) {
+  try {
+    await apiFetch('/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+  } catch {
+    // offline - the token just stays valid until it is used again
+  }
+}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loginNurseWithPassword, registerNurseAccount } from '../services/nurseAuthService'
 import { clearSession, loadSession, saveSession } from '../services/sessionStorage'
-import { checkSessionToken } from '../api'
+import { checkSessionToken, logoutNurse } from '../api'
 
 export const SESSION_EXPIRED_MESSAGE = 'การเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่'
 
@@ -102,13 +102,15 @@ export function useNurseLogin() {
   }, [startSession])
 
   const resetLogin = useCallback(() => {
+    // Revoke the token on the server too, so a copied/stolen one stops working.
+    if (session?.token) logoutNurse(session.token)
     rememberRef.current = false
     clearSession()
     setSession(null)
     setLoading(false)
     setError(null)
     loginLockedRef.current = false
-  }, [])
+  }, [session?.token])
 
   // Merges fields (e.g. full_name/username/email after an AccountSettingsScreen
   // save) into the current session without touching auth state (token,

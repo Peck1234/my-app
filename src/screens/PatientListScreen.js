@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { deletePatient, fetchPatients } from '../api'
 import { isAdmin } from '../utils/roles'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
 import FadeInView from '../components/FadeInView'
@@ -30,6 +31,13 @@ export default function PatientListScreen({ nurse, onSelectPatient, onSubScreenC
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+
+  useAndroidBack(() => {
+    if (scanning) setScanning(false)
+    else if (formMode) setFormMode(null)
+    else return false
+    return true
+  })
 
   useEffect(() => {
     onSubScreenChange?.(scanning || !!formMode)

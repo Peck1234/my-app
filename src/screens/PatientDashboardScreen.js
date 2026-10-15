@@ -15,6 +15,7 @@ import SlotManagementScreen from './SlotManagementScreen'
 import MedicineDatabaseScreen from './MedicineDatabaseScreen'
 import AccountSettingsScreen from './AccountSettingsScreen'
 import { useMedicationReminders } from '../hook/useMedicationReminders'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import { displayImageUri } from '../utils/mediaUrl'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
 
@@ -67,6 +68,18 @@ export default function PatientDashboardScreen({ nurse, onLogout, onProfileUpdat
   const [pendingAssignPatient, setPendingAssignPatient] = useState(null)
   const [showAccountSettings, setShowAccountSettings] = useState(false)
   const initial = nurse.full_name?.trim()?.charAt(0) || 'N'
+
+  // Top level of the Android back button: screens below handle their own
+  // inner steps first; here back closes settings/the open patient, then
+  // returns to the patients tab, and from there leaves the app.
+  useAndroidBack(() => {
+    if (showAccountSettings) setShowAccountSettings(false)
+    else if (selectedPatient) setSelectedPatient(null)
+    else if (activeTab === 'logs') setActiveTab('stats')
+    else if (activeTab !== 'patients') setActiveTab('patients')
+    else return false
+    return true
+  })
 
   const goAssignNewPatientToSlot = (patient) => {
     setPendingAssignPatient(patient)

@@ -17,6 +17,7 @@ jest.mock('../services/sessionStorage', () => ({
 
 jest.mock('../api', () => ({
   checkSessionToken: jest.fn(() => Promise.resolve({ status: 'valid' })),
+  logoutNurse: jest.fn(() => Promise.resolve()),
 }))
 
 // Renders the hook and waits for its startup check for a saved login to finish.
@@ -222,6 +223,21 @@ describe('useNurseLogin', () => {
       expect(result.current.session).toBeNull()
       expect(result.current.loading).toBe(false)
       expect(result.current.error).toBeNull()
+    })
+
+    it('revokes the token on the server when logging out', async () => {
+      loginNurseWithPassword.mockResolvedValue({ ...SESSION, token: 'tok-1' })
+      const { result } = await renderReady()
+
+      await act(async () => {
+        await result.current.handlePasswordLogin({ username: 'suda.rn', password: '123456' })
+      })
+      await act(async () => {
+        result.current.resetLogin()
+        await Promise.resolve()
+      })
+
+      expect(require('../api').logoutNurse).toHaveBeenCalledWith('tok-1')
     })
 
     it('releases the double-submit guard, allowing login again after a successful session is reset', async () => {

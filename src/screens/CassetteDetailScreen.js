@@ -7,6 +7,7 @@ import LinkButton from '../components/LinkButton'
 import MedicineAutocompleteField from '../components/MedicineAutocompleteField'
 import { fetchCassetteDetail, fetchMedicineCatalog, removeCassetteMedicine, updateCassetteMedicine, assignMedicineToMeal } from '../api'
 import { isAdmin } from '../utils/roles'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import { downloadQrCode } from '../utils/downloadQrCode'
 import { MEAL_LABELS } from '../constants/meals'
 import { colors, radius, spacing } from '../constants/theme'
@@ -39,6 +40,17 @@ export default function CassetteDetailScreen({ nurse, patient, cassetteId, meal,
   const [savingNew, setSavingNew] = useState(false)
 
   const qrRef = useRef(null)
+
+  // Android back closes an open edit/add form before leaving the cassette.
+  useAndroidBack(() => {
+    if (editingId) setEditingId(null)
+    else if (addingNew) {
+      setAddingNew(false)
+      setNewDrug(emptyDrugForm())
+    }
+    else return false
+    return true
+  })
   const isCreatingCassette = !cassette && !cassetteId
 
   const loadCassette = () => {

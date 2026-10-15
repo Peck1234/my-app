@@ -8,6 +8,7 @@ import CreateSlotScreen from './CreateSlotScreen'
 import AssignPatientScreen from './AssignPatientScreen'
 import SlotHistoryScreen from './SlotHistoryScreen'
 import { fetchSlots } from '../api'
+import { useAndroidBack } from '../hook/useAndroidBack'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 export default function SlotManagementScreen({ nurse, onSubScreenChange, presetAssignPatient, onConsumedPresetAssign }) {
@@ -21,6 +22,15 @@ export default function SlotManagementScreen({ nurse, onSubScreenChange, presetA
   // tapping an empty slot goes straight into confirming THIS patient instead
   // of making the nurse search for someone they just finished entering.
   const [pickingSlotForPatient, setPickingSlotForPatient] = useState(null)
+
+  useAndroidBack(() => {
+    if (view === 'list') return false
+    if (view === 'history') setView('detail')
+    else if (view === 'assign' && !pickingSlotForPatient) setView('detail')
+    else if (view === 'create') setView('list')
+    else backToList()
+    return true
+  })
 
   useEffect(() => {
     onSubScreenChange?.(view !== 'list')
