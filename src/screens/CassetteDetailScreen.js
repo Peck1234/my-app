@@ -6,6 +6,7 @@ import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
 import MedicineAutocompleteField from '../components/MedicineAutocompleteField'
 import { fetchCassetteDetail, fetchMedicineCatalog, removeCassetteMedicine, updateCassetteMedicine, assignMedicineToMeal } from '../api'
+import { isAdmin } from '../utils/roles'
 import { downloadQrCode } from '../utils/downloadQrCode'
 import { MEAL_LABELS } from '../constants/meals'
 import { colors, radius, spacing } from '../constants/theme'
@@ -20,7 +21,7 @@ function emptyDrugForm() {
 // it, so "creating" one here really means "add the first drug for this
 // meal", after which the response's own cassette_id/qr_code take over and
 // the screen behaves exactly like the existing-cassette case).
-export default function CassetteDetailScreen({ patient, cassetteId, meal, onBack }) {
+export default function CassetteDetailScreen({ nurse, patient, cassetteId, meal, onBack }) {
   const [cassette, setCassette] = useState(null)
   const [loading, setLoading] = useState(!!cassetteId)
   const [error, setError] = useState(null)
@@ -96,7 +97,7 @@ export default function CassetteDetailScreen({ patient, cassetteId, meal, onBack
     setError(null)
     setDeletingId(orderId)
     try {
-      const updated = await removeCassetteMedicine(patient.patient_id, cassetteId, orderId)
+      const updated = await removeCassetteMedicine(patient.patient_id, cassetteId, orderId, { token: nurse.token })
       setCassette(updated)
       setConfirmDeleteId(null)
     } catch (err) {
@@ -270,9 +271,11 @@ export default function CassetteDetailScreen({ patient, cassetteId, meal, onBack
                 <TouchableOpacity onPress={() => startEdit(med)} hitSlop={8}>
                   <Ionicons name="create-outline" size={19} color={colors.accent} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setConfirmDeleteId(med.order_id)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={19} color={colors.danger} />
-                </TouchableOpacity>
+                {isAdmin(nurse) && (
+                  <TouchableOpacity onPress={() => setConfirmDeleteId(med.order_id)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={19} color={colors.danger} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 

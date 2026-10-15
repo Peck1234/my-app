@@ -5,6 +5,7 @@ import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
 import SlotQrCard from '../components/SlotQrCard'
 import { clearSlot } from '../api'
+import { isAdmin } from '../utils/roles'
 import { colors, radius } from '../constants/theme'
 
 export default function SlotDetailScreen({ nurse, slot, onBack, onAssign, onViewHistory, onCleared }) {
@@ -18,7 +19,7 @@ export default function SlotDetailScreen({ nurse, slot, onBack, onAssign, onView
     setError(null)
     setClearing(true)
     try {
-      await clearSlot(slot.id, { staff_id: nurse.nurse_id, base_version: slot.version })
+      await clearSlot(slot.id, { staff_id: nurse.nurse_id, base_version: slot.version }, { token: nurse.token })
       onCleared()
     } catch (err) {
       setError(err.message)
@@ -82,9 +83,9 @@ export default function SlotDetailScreen({ nurse, slot, onBack, onAssign, onView
                 />
               </View>
             </View>
-          ) : (
+          ) : isAdmin(nurse) ? (
             <Button label="เคลียร์ช่อง (ผู้ป่วยออก)" onPress={() => setConfirmingClear(true)} variant="danger" icon="log-out-outline" />
-          )
+          ) : null
         ) : (
           <Button label="ผูกผู้ป่วยเข้าช่องนี้" onPress={onAssign} variant="primary" icon="person-add-outline" />
         )}

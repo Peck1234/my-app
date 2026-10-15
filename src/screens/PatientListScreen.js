@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { deletePatient, fetchPatients } from '../api'
+import { isAdmin } from '../utils/roles'
 import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
 import FadeInView from '../components/FadeInView'
@@ -226,13 +227,15 @@ export default function PatientListScreen({ nurse, onSelectPatient, onSubScreenC
               >
                 <Ionicons name="pencil-outline" size={16} color={colors.accent} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => setDeletingPatient(item)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="trash-outline" size={16} color={colors.danger} />
-              </TouchableOpacity>
+              {isAdmin(nurse) && (
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => setDeletingPatient(item)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                </TouchableOpacity>
+              )}
               <Ionicons name="chevron-forward" size={20} color={colors.muted} />
             </TouchableOpacity>
           )

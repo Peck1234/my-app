@@ -48,6 +48,7 @@ export async function registerNurseAccount({ fullName, username, email, password
     nurse_id: nurse.nurse_id,
     full_name: nurse.full_name,
     username: nurse.username,
+    role: nurse.role || 'nurse',
     email: nurse.email,
     qr_code_nurse: nurse.qr_code_nurse,
     profile_photo_url: nurse.profile_photo_url,
@@ -78,6 +79,7 @@ export async function loginNurseWithPassword({ username, password }) {
     nurse_id: nurse.nurse_id,
     full_name: nurse.full_name,
     username: nurse.username,
+    role: nurse.role || 'nurse',
     email: nurse.email,
     qr_code_nurse: nurse.qr_code_nurse,
     profile_photo_url: nurse.profile_photo_url,
@@ -159,6 +161,7 @@ export async function updateNurseProfileDetails({ token, fullName, username, ema
   return {
     full_name: nurse.full_name,
     username: nurse.username,
+    role: nurse.role || 'nurse',
     email: nurse.email,
     profile_photo_url: nurse.profile_photo_url,
   }

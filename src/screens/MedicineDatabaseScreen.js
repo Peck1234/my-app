@@ -7,6 +7,7 @@ import MedicineAddScreen from './MedicineAddScreen'
 import MedicineImportScreen from './MedicineImportScreen'
 import MedicineAssignScreen from './MedicineAssignScreen'
 import { deleteMedicineCatalogEntry, fetchMedicineCatalog, toggleMedicineFavorite } from '../api'
+import { isAdmin } from '../utils/roles'
 import { colors, radius, shadow, spacing } from '../constants/theme'
 
 export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
@@ -258,13 +259,15 @@ export default function MedicineDatabaseScreen({ nurse, onSubScreenChange }) {
                   </View>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => setDeletingMedicine(med)}
-                hitSlop={8}
-              >
-                <Ionicons name="trash-outline" size={16} color={colors.danger} />
-              </TouchableOpacity>
+              {isAdmin(nurse) && (
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => setDeletingMedicine(med)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                </TouchableOpacity>
+              )}
               <Ionicons name="chevron-forward" size={16} color={colors.muted} style={styles.chevron} />
             </View>
           ))}

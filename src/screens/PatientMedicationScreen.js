@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { fetchPatientMedications, fetchPatientMealCassettes } from '../api'
 import Button from '../components/Button'
 import LinkButton from '../components/LinkButton'
+import PatientDispenseHistoryScreen from './PatientDispenseHistoryScreen'
 import FadeInView from '../components/FadeInView'
 import DispenseCompleteScreen from './DispenseCompleteScreen'
 import MedicationLocatorScreen from './MedicationLocatorScreen'
@@ -38,6 +39,7 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
   const [loadingQr, setLoadingQr] = useState(false)
   const [openCassetteId, setOpenCassetteId] = useState(null)
   const [creatingMeal, setCreatingMeal] = useState(null)
+  const [viewingHistory, setViewingHistory] = useState(false)
 
   const visibleMedications = useMemo(() => {
     if (showAll) return medications
@@ -67,10 +69,19 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
       .finally(() => setLoadingQr(false))
   }
 
+  if (viewingHistory) {
+    return (
+      <FadeInView key="history">
+        <PatientDispenseHistoryScreen nurse={nurse} patient={patient} onBack={() => setViewingHistory(false)} />
+      </FadeInView>
+    )
+  }
+
   if (openCassetteId || creatingMeal) {
     return (
       <FadeInView key="cassette-detail">
         <CassetteDetailScreen
+          nurse={nurse}
           patient={patient}
           cassetteId={openCassetteId}
           meal={creatingMeal}
@@ -141,6 +152,12 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
           medications={medications}
           onBack={onBack}
         />
+        <Button
+          label="บันทึกการให้ยา / ส่งออก Excel"
+          onPress={() => setViewingHistory(true)}
+          variant="outline"
+          icon="document-text-outline"
+        />
       </FadeInView>
     )
   }
@@ -167,6 +184,13 @@ export default function PatientMedicationScreen({ nurse, patient, onBack }) {
           onPress={openQrCodes}
           variant="outline"
           icon="qr-code-outline"
+          style={styles.qrButton}
+        />
+        <Button
+          label="บันทึกการให้ยา / ส่งออก Excel"
+          onPress={() => setViewingHistory(true)}
+          variant="outline"
+          icon="document-text-outline"
           style={styles.qrButton}
         />
 

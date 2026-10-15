@@ -32,8 +32,14 @@ export function useNurseLogin() {
 
       // Checked after showing the app, so opening it stays instant and works
       // offline; only a token the server actually rejects logs the nurse out.
-      const status = await checkSessionToken(saved.token)
-      if (cancelled || status !== 'invalid') return
+      const { status, user } = await checkSessionToken(saved.token)
+      if (cancelled) return
+      if (status === 'valid') {
+        // Pick up role changes made since this login was saved.
+        if (user?.role) setSession((prev) => (prev ? { ...prev, role: user.role } : prev))
+        return
+      }
+      if (status !== 'invalid') return
       rememberRef.current = false
       loginLockedRef.current = false
       await clearSession()

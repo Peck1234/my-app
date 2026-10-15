@@ -16,7 +16,7 @@ jest.mock('../services/sessionStorage', () => ({
 }))
 
 jest.mock('../api', () => ({
-  checkSessionToken: jest.fn(() => Promise.resolve('valid')),
+  checkSessionToken: jest.fn(() => Promise.resolve({ status: 'valid' })),
 }))
 
 // Renders the hook and waits for its startup check for a saved login to finish.
@@ -248,7 +248,7 @@ describe('useNurseLogin', () => {
 
     beforeEach(() => {
       loadSession.mockResolvedValue(null)
-      checkSessionToken.mockResolvedValue('valid')
+      checkSessionToken.mockResolvedValue({ status: 'valid' })
     })
 
     it('restores a saved login on startup and keeps it when the server accepts the token', async () => {
@@ -261,9 +261,18 @@ describe('useNurseLogin', () => {
       expect(clearSession).not.toHaveBeenCalled()
     })
 
+    it('refreshes the role from the server when restoring a saved login', async () => {
+      loadSession.mockResolvedValue({ ...SAVED, role: 'nurse' })
+      checkSessionToken.mockResolvedValue({ status: 'valid', user: { role: 'admin' } })
+      const { result } = await renderReady()
+
+      await waitFor(() => expect(result.current.session.role).toBe('admin'))
+      expect(result.current.session.token).toBe('12|savedtoken')
+    })
+
     it('logs out with a message when the server rejects the saved token', async () => {
       loadSession.mockResolvedValue(SAVED)
-      checkSessionToken.mockResolvedValue('invalid')
+      checkSessionToken.mockResolvedValue({ status: 'invalid' })
       const { result } = await renderReady()
 
       await waitFor(() => expect(result.current.session).toBeNull())
@@ -273,7 +282,7 @@ describe('useNurseLogin', () => {
 
     it('stays logged in when the server cannot be reached (offline)', async () => {
       loadSession.mockResolvedValue(SAVED)
-      checkSessionToken.mockResolvedValue('unknown')
+      checkSessionToken.mockResolvedValue({ status: 'unknown' })
       const { result } = await renderReady()
 
       await waitFor(() => expect(checkSessionToken).toHaveBeenCalled())

@@ -211,10 +211,11 @@ export async function updateCassetteMedicine(patientId, cassetteId, medicationId
   )
 }
 
-export async function removeCassetteMedicine(patientId, cassetteId, medicationId) {
+// Admin only (the server answers 403 for other accounts).
+export async function removeCassetteMedicine(patientId, cassetteId, medicationId, { token }) {
   return apiFetchJson(
     `/patients/${patientId}/meal-cassettes/${cassetteId}/medications/${medicationId}`,
-    { method: 'DELETE' },
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
     { fallbackMessage: 'ไม่สามารถลบยาได้' }
   )
 }
@@ -300,11 +301,14 @@ export async function resetPassword({ email, code, newPassword }) {
 export async function checkSessionToken(token) {
   try {
     const res = await apiFetch('/user', { headers: { Authorization: `Bearer ${token}` } }, { retryable: true })
-    if (res.ok) return 'valid'
-    if (res.status === 401) return 'invalid'
-    return 'unknown'
+    if (res.ok) {
+      const user = await res.json().catch(() => null)
+      return { status: 'valid', user }
+    }
+    if (res.status === 401) return { status: 'invalid' }
+    return { status: 'unknown' }
   } catch {
-    return 'unknown'
+    return { status: 'unknown' }
   }
 }
 
@@ -466,10 +470,15 @@ export async function assignPatientToSlot(slotId, payload) {
   )
 }
 
-export async function clearSlot(slotId, payload) {
+// Admin only (the server answers 403 for other accounts).
+export async function clearSlot(slotId, payload, { token }) {
   return apiFetchJson(
     `/slots/${slotId}/clear`,
-    { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    },
     { fallbackMessage: 'ไม่สามารถเคลียร์ช่องนี้ได้' }
   )
 }
@@ -555,5 +564,103 @@ export async function bulkImportMedicines(fileAsset) {
     '/medicine-catalog/bulk-import',
     { method: 'POST', body: form },
     { fallbackMessage: 'นำเข้าไฟล์ไม่สำเร็จ' }
+  )
+}
+
+// One patient's actual dispenses (not verification scans) between two
+// YYYY-MM-DD dates in Thai time, newest first. Requires login.
+export async function fetchPatientDispenseHistory({ token, patientId, from, to }) {
+  const query = new URLSearchParams({ from, to }).toString()
+  return apiFetchJson(
+    `/patients/${patientId}/dispense-history?${query}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+    { retryable: true, fallbackMessage: 'โหลดประวัติการจ่ายยาไม่สำเร็จ' }
+  )
+}
+
+// GET an .xlsx from the backend and hand it to the user: a normal file
+// download on web, the share sheet on phones (save to Files/Drive, open in
+// Excel, send via LINE...).
+async function downloadXlsx({ token, path, fileName, fallbackMessage }) {
+  const res = await apiFetch(path, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail || fallbackMessage)
+  }
+
+  if (Platform.OS === 'web') {
+    const url = URL.createObjectURL(await res.blob())
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    return
+  }
+
+  const FileSystem = await import('expo-file-system/legacy')
+  const Sharing = await import('expo-sharing')
+  const base64 = await blobToBase64(await res.blob())
+  const fileUri = `${FileSystem.cacheDirectory}${fileName}`
+  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: 'base64' })
+  await Sharing.shareAsync(fileUri, {
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    UTI: 'org.openxmlformats.spreadsheetml.sheet',
+    dialogTitle: fileName,
+  })
+}
+
+// Export 1: dispense history - the ward's MAR form plus every dispense.
+export async function exportPatientDispenseHistory({ token, patientId, from, to, fileName }) {
+  return downloadXlsx({
+    token,
+    path: `/patients/${patientId}/dispense-history/export?${new URLSearchParams({ from, to }).toString()}`,
+    fileName,
+    fallbackMessage: 'ส่งออกประวัติการจ่ายยาไม่สำเร็จ',
+  })
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).replace(/^data:.*;base64,/, ''))
+    reader.onerror = () => reject(new Error('อ่านไฟล์ที่ดาวน์โหลดไม่สำเร็จ'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+// Admin only: every account with its role ('admin' | 'nurse').
+export async function fetchNurseAccounts({ token }) {
+  return apiFetchJson(
+    '/nurses',
+    { headers: { Authorization: `Bearer ${token}` } },
+    { retryable: true, fallbackMessage: 'โหลดรายชื่อผู้ใช้ไม่สำเร็จ' }
+  )
+}
+
+// Admin only: make an account an admin or a dispensing nurse.
+export async function setNurseRole({ token, nurseId, role }) {
+  return apiFetchJson(
+    `/nurses/${nurseId}/role`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ role }),
+    },
+    { fallbackMessage: 'เปลี่ยนสิทธิ์ไม่สำเร็จ' }
+  )
+}
+
+// Admin only: close another account (it can't log in any more; dispense
+// history keeps its name).
+export async function deleteNurseAccount({ token, nurseId }) {
+  return apiFetchJson(
+    `/nurses/${nurseId}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
+    { fallbackMessage: 'ลบบัญชีไม่สำเร็จ' }
   )
 }

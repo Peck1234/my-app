@@ -21,6 +21,8 @@ import { uploadNurseProfilePhoto } from '../api'
 import { displayImageUri } from '../utils/mediaUrl'
 import { changeNurseOwnPassword, updateNurseProfileDetails } from '../services/nurseAuthService'
 import { colors, gradients, radius, shadow, spacing } from '../constants/theme'
+import { isAdmin } from '../utils/roles'
+import UserRolesScreen, { ROLE_LABELS } from './UserRolesScreen'
 
 export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated }) {
   const [fullName, setFullName] = useState(nurse.full_name || '')
@@ -73,6 +75,7 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState(null)
   const [passwordSaved, setPasswordSaved] = useState(false)
+  const [showRoles, setShowRoles] = useState(false)
 
   const handleSaveProfile = async () => {
     if (profileLoading) return
@@ -107,6 +110,10 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
     }
   }
 
+  if (showRoles) {
+    return <UserRolesScreen nurse={nurse} onBack={() => setShowRoles(false)} />
+  }
+
   return (
     /* Web-only: Keyboard.dismiss() is shimmed on react-native-web as "blur
        the focused element", and a web click on a nested TextInput still
@@ -118,6 +125,7 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
 
       <Text style={styles.title}>บัญชีผู้ใช้</Text>
       <Text style={styles.subtitle}>แก้ไขข้อมูลบัญชีของคุณเอง — แก้ไขได้เฉพาะบัญชีนี้เท่านั้น</Text>
+      <Text style={styles.subtitle}>สิทธิ์ของคุณ: {ROLE_LABELS[nurse.role] || ROLE_LABELS.nurse}</Text>
 
       <View style={styles.photoSection}>
         <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8} disabled={photoUploading}>
@@ -258,6 +266,18 @@ export default function AccountSettingsScreen({ nurse, onBack, onProfileUpdated 
           icon="key-outline"
         />
       </View>
+
+      {isAdmin(nurse) && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>ผู้ดูแลระบบ</Text>
+          <Button
+            label="จัดการสิทธิ์ผู้ใช้"
+            onPress={() => setShowRoles(true)}
+            variant="outline"
+            icon="shield-checkmark-outline"
+          />
+        </View>
+      )}
     </ScrollView>
     </TouchableWithoutFeedback>
   )

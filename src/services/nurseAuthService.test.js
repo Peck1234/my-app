@@ -99,6 +99,7 @@ describe('registerNurseAccount', () => {
       nurse_id: 1,
       full_name: 'สุดา ใจดี',
       username: 'suda.rn',
+      role: 'nurse',
       email: 'suda@example.com',
       qr_code_nurse: 'NURSE-001',
       token: 'abc123',
